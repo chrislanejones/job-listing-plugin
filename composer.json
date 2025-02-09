@@ -1,0 +1,15 @@
+{
+  "name": "your-vendor/job-listing-plugin",
+  "description": "A WordPress plugin for job listings with Elementor integration",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=7.4",
+    "guzzlehttp/guzzle": "^7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "JobListingPlugin\\": "includes/"
+    }
+  },
+  "license": "GPL-2.0-or-later"
+}
