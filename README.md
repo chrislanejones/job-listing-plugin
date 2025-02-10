@@ -2,49 +2,38 @@
 
 A WordPress plugin that integrates job listings with Elementor page builder.
 
-## Features
+## Requirements
 
-- Easy integration with job board APIs
-- Customizable display options
-- Elementor widget support
-- Responsive design
-- Custom styling options
-- API key support
-- Configurable number of jobs per page
+- PHP 7.4 or higher
+- WordPress 5.0 or higher
+- Elementor plugin installed and activated
+- Composer (for development installation)
 
 ## Installation
 
-1. Upload the plugin files to the `/wp-content/plugins/job-listing-plugin` directory, or install the plugin through the WordPress plugins screen.
-2. Install required dependencies using Composer:
+### Option 1: Direct Installation (Recommended)
+
+1. Download the latest release from the releases page
+2. Upload the plugin zip file through WordPress admin > Plugins > Add New > Upload Plugin
+3. Activate the plugin through the 'Plugins' menu in WordPress
+
+### Option 2: Development Installation
+
+1. Clone this repository to your `/wp-content/plugins/` directory
 
 ```bash
-cd wp-content/plugins/job-listing-plugin
-composer require guzzlehttp/guzzle
+cd /path/to/wp-content/plugins/
+git clone https://github.com/yourusername/job-listing-plugin.git
 ```
 
-3. Activate the plugin through the 'Plugins' screen in WordPress
-4. Configure the plugin settings under Settings > Job Listing
+2. Install dependencies using Composer:
 
-## Directory Structure
+```bash
+cd job-listing-plugin
+composer install
+```
 
-```
-job-listing-plugin/
-├── admin/
-│   └── class-job-listing-admin.php
-├── assets/
-│   ├── css/
-│   │   └── job-listing.css
-│   └── js/
-│       └── job-listing.js
-├── includes/
-│   ├── class-job-listing-plugin.php
-│   └── widgets/
-│       └── class-job-listing-widget.php
-├── vendor/
-├── composer.json
-├── README.md
-└── job-listing-plugin.php
-```
+3. Activate the plugin through the 'Plugins' menu in WordPress
 
 ## Configuration
 
@@ -64,13 +53,15 @@ job-listing-plugin/
    - Show/hide location
    - Customize colors and typography
 
-## Styling
+## Troubleshooting
 
-The plugin comes with default styles that can be customized through:
+### Common Issues
 
-1. Elementor's style controls in the widget settings
-2. Custom CSS in your theme
-3. Modifying the plugin's CSS file
+1. **Plugin Activation Error**: If you see an error about missing `autoload.php`, you need to run `composer install` in the plugin directory.
+
+2. **Elementor Not Found**: The plugin requires Elementor to be installed and activated.
+
+3. **PHP Version Error**: Make sure your server is running PHP 7.4 or higher.
 
 ## Support
 
