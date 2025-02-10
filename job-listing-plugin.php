@@ -4,7 +4,7 @@ Plugin Name: Job Listing Plugin
 Plugin URI: 
 Description: A comprehensive job listing plugin with Elementor integration
 Version: 1.0
-Author: Your Name
+Author: CLJ
 */
 
 // Prevent direct access

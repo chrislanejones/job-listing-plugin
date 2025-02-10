@@ -55,51 +55,82 @@ class Job_Listing_Plugin {
 
     public function get_jobs_list() {
         try {
-            $client_url = isset($this->options['client_url']) 
-                ? $this->options['client_url'] 
-                : 'https://api.ashbyhq.com/jobBoard.list';
+            // Get the organization ID from options
+            $org_id = isset($this->options['organization_id']) ? trim($this->options['organization_id']) : '';
             
-            $api_key = isset($this->options['api_key']) ? $this->options['api_key'] : '';
-
-            $args = [
-                'method' => 'POST',
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json'
-                ],
-                'timeout' => 30
-            ];
-
-            if (!empty($api_key)) {
-                $args['headers']['Authorization'] = 'Bearer ' . $api_key;
-            }
-
-            $response = wp_remote_post($client_url, $args);
-
-            if (is_wp_error($response)) {
-                return new WP_Error('api_error', $response->get_error_message(), ['status' => 500]);
-            }
-
-            $response_code = wp_remote_retrieve_response_code($response);
-            if ($response_code !== 200) {
+            if (empty($org_id)) {
                 return new WP_Error(
-                    'api_error',
-                    'API request failed with status: ' . $response_code,
-                    ['status' => $response_code]
+                    'missing_org_id',
+                    'Ashby organization ID is required',
+                    ['status' => 400]
                 );
             }
 
-            $body = wp_remote_retrieve_body($response);
-            $data = json_decode($body, true);
+            // Make request to jobs page
+            $api_url = "https://jobs.ashbyhq.com/{$org_id}";
+            $response = wp_remote_get($api_url);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return new WP_Error('json_error', 'Invalid JSON response', ['status' => 500]);
+            if (is_wp_error($response)) {
+                return new WP_Error(
+                    'api_error',
+                    'API request failed: ' . $response->get_error_message(),
+                    ['status' => 500]
+                );
             }
 
-            return new WP_REST_Response($data, 200);
+            $html = wp_remote_retrieve_body($response);
+
+            // Extract the window.__appData JSON
+            if (preg_match('/window\.__appData\s*=\s*({.*?});/s', $html, $matches)) {
+                $appData = json_decode($matches[1], true);
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return new WP_Error(
+                        'json_error',
+                        'Failed to parse JSON data: ' . json_last_error_msg(),
+                        ['status' => 500]
+                    );
+                }
+
+                // Extract job postings from the jobBoard data
+                if (isset($appData['jobBoard']['jobPostings']) && is_array($appData['jobBoard']['jobPostings'])) {
+                    $formatted_jobs = array_map(function($posting) use ($org_id) {
+                        return [
+                            'title' => $posting['title'],
+                            'department' => $posting['departmentName'],
+                            'location' => $posting['locationName'],
+                            'compensation' => $posting['compensationTierSummary'] ?? '',
+                            'employmentType' => $posting['employmentType'] ?? '',
+                            'applicationUrl' => "https://jobs.ashbyhq.com/{$org_id}/application?jobId=" . $posting['jobId'],
+                            'publishedDate' => $posting['publishedDate'] ?? '',
+                            'workplaceType' => $posting['workplaceType'] ?? ''
+                        ];
+                    }, $appData['jobBoard']['jobPostings']);
+
+                    return new WP_REST_Response([
+                        'jobs' => $formatted_jobs,
+                        'organization' => [
+                            'name' => $appData['organization']['name'] ?? '',
+                            'description' => strip_tags($appData['organization']['theme']['jobBoardTopDescriptionHtml'] ?? ''),
+                            'values' => strip_tags($appData['organization']['theme']['jobBoardBottomDescriptionHtml'] ?? '')
+                        ]
+                    ], 200);
+                }
+            }
+
+            // If we couldn't find the data, return an error
+            return new WP_Error(
+                'parsing_error',
+                'Could not find job data in the response',
+                ['status' => 500]
+            );
 
         } catch (Exception $e) {
-            return new WP_Error('api_error', $e->getMessage(), ['status' => 500]);
+            return new WP_Error(
+                'api_error',
+                'Unexpected error: ' . $e->getMessage(),
+                ['status' => 500]
+            );
         }
     }
 }

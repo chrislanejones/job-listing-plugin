@@ -21,7 +21,6 @@
     }
 
     bindEvents() {
-      // Add any event listeners here
       $(window).on("resize", this.handleResize.bind(this));
     }
 
@@ -41,22 +40,48 @@
 
         this.loading.hide();
 
-        if (response && response.jobs) {
+        if (response && response.jobs && Array.isArray(response.jobs)) {
+          if (response.organization) {
+            this.renderOrganizationInfo(response.organization);
+          }
           this.renderJobs(response.jobs);
         } else {
           this.showError("No jobs found");
         }
       } catch (error) {
         console.error("Error loading jobs:", error);
-        this.showError("Error loading jobs. Please try again later.");
+        this.showError(error.responseJSON?.message || "Error loading jobs");
+      }
+    }
+
+    renderOrganizationInfo(org) {
+      if (org.description || org.values) {
+        const orgHtml = `
+                    <div class="organization-info">
+                        ${
+                          org.description
+                            ? `<div class="org-description">${org.description}</div>`
+                            : ""
+                        }
+                        ${
+                          org.values
+                            ? `<div class="org-values">${org.values}</div>`
+                            : ""
+                        }
+                    </div>
+                `;
+        this.container.prepend(orgHtml);
       }
     }
 
     renderJobs(jobs) {
-      // Clear existing jobs
       this.jobsList.empty();
 
-      // Limit jobs based on jobsPerPage setting
+      if (jobs.length === 0) {
+        this.showMessage("No open positions at this time.");
+        return;
+      }
+
       const limitedJobs = jobs.slice(0, this.settings.jobsPerPage);
 
       limitedJobs.forEach((job) => {
@@ -64,7 +89,6 @@
         this.jobsList.append(jobElement);
       });
 
-      // Add fade-in animation
       this.jobsList.find(".job-item").each((index, element) => {
         setTimeout(() => {
           $(element).addClass("fade-in");
@@ -74,35 +98,83 @@
 
     createJobElement(job) {
       let jobHtml = `
-                <div class="job-item" style="opacity: 0; transition: opacity 0.3s ease">
-                    <h3>${this.escapeHtml(job.title)}</h3>`;
+                <div class="job-item">
+                    <div class="job-content">
+                        <div class="job-header">
+                            <h3>${this.escapeHtml(job.title)}</h3>
+                            ${
+                              job.publishedDate
+                                ? `<span class="job-date">Posted ${this.formatDate(
+                                    job.publishedDate
+                                  )}</span>`
+                                : ""
+                            }
+                        </div>
+                        <div class="job-details">`;
 
       if (this.settings.showDepartment && job.department) {
         jobHtml += `
-                    <p class="job-department">
+                    <div class="job-detail">
                         <i class="fas fa-briefcase"></i>
                         ${this.escapeHtml(job.department)}
-                    </p>`;
+                    </div>`;
       }
 
       if (this.settings.showLocation && job.location) {
         jobHtml += `
-                    <p class="job-location">
+                    <div class="job-detail">
                         <i class="fas fa-map-marker-alt"></i>
                         ${this.escapeHtml(job.location)}
-                    </p>`;
+                    </div>`;
+      }
+
+      if (job.workplaceType) {
+        jobHtml += `
+                    <div class="job-detail">
+                        <i class="fas fa-building"></i>
+                        ${this.escapeHtml(job.workplaceType)}
+                    </div>`;
+      }
+
+      if (job.employmentType) {
+        jobHtml += `
+                    <div class="job-detail">
+                        <i class="fas fa-clock"></i>
+                        ${this.escapeHtml(job.employmentType)}
+                    </div>`;
+      }
+
+      if (job.compensation) {
+        jobHtml += `
+                    <div class="job-detail">
+                        <i class="fas fa-dollar-sign"></i>
+                        ${this.escapeHtml(job.compensation)}
+                    </div>`;
       }
 
       jobHtml += `
-                    <a href="${this.escapeHtml(job.applicationUrl)}" 
-                       class="job-apply-button" 
-                       target="_blank"
-                       rel="noopener noreferrer">
-                        Apply Now
-                    </a>
+                        </div>
+                    </div>
+                    <div class="job-action">
+                        <a href="${this.escapeHtml(job.applicationUrl)}" 
+                           class="job-apply-button" 
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            Apply Now
+                        </a>
+                    </div>
                 </div>`;
 
       return jobHtml;
+    }
+
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     }
 
     showError(message) {
@@ -114,8 +186,18 @@
             `);
     }
 
+    showMessage(message) {
+      this.jobsList.html(`
+                <div class="info-message">
+                    ${this.escapeHtml(message)}
+                </div>
+            `);
+    }
+
     escapeHtml(unsafe) {
+      if (!unsafe) return "";
       return unsafe
+        .toString()
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")

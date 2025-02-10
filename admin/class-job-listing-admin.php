@@ -24,26 +24,23 @@ class Job_Listing_Admin {
 
         add_settings_section(
             'job_listing_main_section',
-            'API Settings',
-            null,
+            'Ashby API Settings',
+            [$this, 'render_section_info'],
             'job-listing-settings'
         );
 
         add_settings_field(
-            'client_url',
-            'API URL',
-            [$this, 'render_client_url_field'],
+            'organization_id',
+            'Organization ID',
+            [$this, 'render_organization_id_field'],
             'job-listing-settings',
             'job_listing_main_section'
         );
+    }
 
-        add_settings_field(
-            'api_key',
-            'API Key',
-            [$this, 'render_api_key_field'],
-            'job-listing-settings',
-            'job_listing_main_section'
-        );
+    public function render_section_info() {
+        echo '<p>Enter your Ashby organization ID to connect to your job board.</p>';
+        echo '<p>You can find your organization ID in your Ashby job board URL. For example, if your job board URL is "jobs.ashbyhq.com/your-company", your organization ID is "your-company".</p>';
     }
 
     public function render_settings_page() {
@@ -61,28 +58,16 @@ class Job_Listing_Admin {
         <?php
     }
 
-    public function render_client_url_field() {
-        $value = isset($this->options['client_url']) ? $this->options['client_url'] : '';
+    public function render_organization_id_field() {
+        $value = isset($this->options['organization_id']) ? $this->options['organization_id'] : '';
         ?>
         <input type="text" 
-               name="job_listing_settings[client_url]" 
+               name="job_listing_settings[organization_id]" 
                value="<?php echo esc_attr($value); ?>" 
                class="regular-text"
-               placeholder="https://api.ashbyhq.com/jobBoard.list"
+               placeholder="your-company"
         />
-        <p class="description">Enter your API endpoint URL</p>
-        <?php
-    }
-
-    public function render_api_key_field() {
-        $value = isset($this->options['api_key']) ? $this->options['api_key'] : '';
-        ?>
-        <input type="password" 
-               name="job_listing_settings[api_key]" 
-               value="<?php echo esc_attr($value); ?>" 
-               class="regular-text"
-        />
-        <p class="description">Enter your API key if required</p>
+        <p class="description">Enter your Ashby organization ID (found in your job board URL)</p>
         <?php
     }
 }
