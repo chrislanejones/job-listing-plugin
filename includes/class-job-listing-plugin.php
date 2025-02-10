@@ -61,18 +61,42 @@ class Job_Listing_Plugin {
             
             $api_key = isset($this->options['api_key']) ? $this->options['api_key'] : '';
 
-            $headers = ['accept' => 'application/json'];
+            $args = [
+                'method' => 'POST',
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ],
+                'timeout' => 30
+            ];
+
             if (!empty($api_key)) {
-                $headers['Authorization'] = 'Bearer ' . $api_key;
+                $args['headers']['Authorization'] = 'Bearer ' . $api_key;
             }
 
-            $client = new \GuzzleHttp\Client();
-            $response = $client->request('POST', $client_url, [
-                'headers' => $headers,
-            ]);
+            $response = wp_remote_post($client_url, $args);
 
-            $body = json_decode($response->getBody(), true);
-            return new WP_REST_Response($body, 200);
+            if (is_wp_error($response)) {
+                return new WP_Error('api_error', $response->get_error_message(), ['status' => 500]);
+            }
+
+            $response_code = wp_remote_retrieve_response_code($response);
+            if ($response_code !== 200) {
+                return new WP_Error(
+                    'api_error',
+                    'API request failed with status: ' . $response_code,
+                    ['status' => $response_code]
+                );
+            }
+
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return new WP_Error('json_error', 'Invalid JSON response', ['status' => 500]);
+            }
+
+            return new WP_REST_Response($data, 200);
 
         } catch (Exception $e) {
             return new WP_Error('api_error', $e->getMessage(), ['status' => 500]);

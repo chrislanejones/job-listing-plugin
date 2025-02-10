@@ -4,7 +4,7 @@ Plugin Name: Job Listing Plugin
 Plugin URI: 
 Description: A comprehensive job listing plugin with Elementor integration
 Version: 1.0
-Author: CLJ
+Author: Your Name
 */
 
 // Prevent direct access
@@ -17,62 +17,34 @@ define('JLP_VERSION', '1.0.0');
 define('JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Check for Composer autoloader
-if (!file_exists(JLP_PLUGIN_DIR . 'vendor/autoload.php')) {
-    add_action('admin_notices', function() {
-        ?>
-        <div class="notice notice-error">
-            <p>Job Listing Plugin requires Composer dependencies to be installed. Please run <code>composer install</code> in the plugin directory or download the full release version.</p>
-        </div>
-        <?php
-    });
-    return;
-}
-
-// Require Composer autoloader
-require_once(JLP_PLUGIN_DIR . 'vendor/autoload.php');
-
-// Check if Elementor is installed and activated
-if (!did_action('elementor/loaded')) {
-    add_action('admin_notices', function() {
-        ?>
-        <div class="notice notice-warning">
-            <p><?php echo sprintf('Job Listing Plugin requires Elementor to be installed and activated. Please %s install Elementor %s', '<a href="' . esc_url(admin_url('plugin-install.php?s=Elementor&tab=search&type=term')) . '">', '</a>'); ?></p>
-        </div>
-        <?php
-    });
-    return;
-}
-
 // Load core plugin class
-if (file_exists(JLP_PLUGIN_DIR . 'includes/class-job-listing-plugin.php')) {
-    require_once(JLP_PLUGIN_DIR . 'includes/class-job-listing-plugin.php');
-} else {
-    add_action('admin_notices', function() {
-        ?>
-        <div class="notice notice-error">
-            <p>Job Listing Plugin core file is missing. Please reinstall the plugin.</p>
-        </div>
-        <?php
-    });
-    return;
-}
+require_once(JLP_PLUGIN_DIR . 'includes/class-job-listing-plugin.php');
 
 // Load admin functionality
-if (is_admin() && file_exists(JLP_PLUGIN_DIR . 'admin/class-job-listing-admin.php')) {
+if (is_admin()) {
     require_once(JLP_PLUGIN_DIR . 'admin/class-job-listing-admin.php');
 }
 
 // Initialize the plugin
 function jlp_init() {
-    if (class_exists('Job_Listing_Plugin')) {
-        $plugin = Job_Listing_Plugin::get_instance();
-        $plugin->init();
+    // Check if Elementor is installed and activated
+    if (!did_action('elementor/loaded')) {
+        add_action('admin_notices', function() {
+            ?>
+            <div class="notice notice-warning">
+                <p><?php echo sprintf('Job Listing Plugin requires Elementor to be installed and activated. Please %s install Elementor %s', '<a href="' . esc_url(admin_url('plugin-install.php?s=Elementor&tab=search&type=term')) . '">', '</a>'); ?></p>
+            </div>
+            <?php
+        });
+        return;
+    }
 
-        if (is_admin() && class_exists('Job_Listing_Admin')) {
-            $admin = new Job_Listing_Admin();
-            $admin->init();
-        }
+    $plugin = Job_Listing_Plugin::get_instance();
+    $plugin->init();
+
+    if (is_admin()) {
+        $admin = new Job_Listing_Admin();
+        $admin->init();
     }
 }
 add_action('plugins_loaded', 'jlp_init');
