@@ -41,9 +41,6 @@
         this.loading.hide();
 
         if (response && response.jobs && Array.isArray(response.jobs)) {
-          if (response.organization) {
-            this.renderOrganizationInfo(response.organization);
-          }
           this.renderJobs(response.jobs);
         } else {
           this.showError("No jobs found");
@@ -51,26 +48,6 @@
       } catch (error) {
         console.error("Error loading jobs:", error);
         this.showError(error.responseJSON?.message || "Error loading jobs");
-      }
-    }
-
-    renderOrganizationInfo(org) {
-      if (org.description || org.values) {
-        const orgHtml = `
-                    <div class="organization-info">
-                        ${
-                          org.description
-                            ? `<div class="org-description">${org.description}</div>`
-                            : ""
-                        }
-                        ${
-                          org.values
-                            ? `<div class="org-values">${org.values}</div>`
-                            : ""
-                        }
-                    </div>
-                `;
-        this.container.prepend(orgHtml);
       }
     }
 
@@ -102,17 +79,10 @@
                     <div class="job-content">
                         <div class="job-header">
                             <h3>${this.escapeHtml(job.title)}</h3>
-                            ${
-                              job.publishedDate
-                                ? `<span class="job-date">Posted ${this.formatDate(
-                                    job.publishedDate
-                                  )}</span>`
-                                : ""
-                            }
                         </div>
                         <div class="job-details">`;
 
-      if (this.settings.showDepartment && job.department) {
+      if (job.department) {
         jobHtml += `
                     <div class="job-detail">
                         <i class="fas fa-briefcase"></i>
@@ -120,19 +90,24 @@
                     </div>`;
       }
 
-      if (this.settings.showLocation && job.location) {
+      if (job.team) {
+        jobHtml += `
+                    <div class="job-detail">
+                        <i class="fas fa-users"></i>
+                        ${this.escapeHtml(job.team)}
+                    </div>`;
+      }
+
+      if (job.location) {
         jobHtml += `
                     <div class="job-detail">
                         <i class="fas fa-map-marker-alt"></i>
                         ${this.escapeHtml(job.location)}
-                    </div>`;
-      }
-
-      if (job.workplaceType) {
-        jobHtml += `
-                    <div class="job-detail">
-                        <i class="fas fa-building"></i>
-                        ${this.escapeHtml(job.workplaceType)}
+                        ${
+                          job.isRemote
+                            ? ' <span class="remote-badge"><i class="fas fa-home"></i> Remote</span>'
+                            : ""
+                        }
                     </div>`;
       }
 
@@ -141,14 +116,6 @@
                     <div class="job-detail">
                         <i class="fas fa-clock"></i>
                         ${this.escapeHtml(job.employmentType)}
-                    </div>`;
-      }
-
-      if (job.compensation) {
-        jobHtml += `
-                    <div class="job-detail">
-                        <i class="fas fa-dollar-sign"></i>
-                        ${this.escapeHtml(job.compensation)}
                     </div>`;
       }
 
@@ -166,15 +133,6 @@
                 </div>`;
 
       return jobHtml;
-    }
-
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
     }
 
     showError(message) {

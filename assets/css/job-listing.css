@@ -124,6 +124,22 @@
   border-top: 1px solid var(--alembic-border);
 }
 
+.remote-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--alembic-light);
+  color: var(--alembic-primary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  margin-left: 8px;
+}
+
+.remote-badge i {
+  font-size: 12px;
+  margin-right: 4px;
+}
+
 .loading {
   text-align: center;
   padding: 40px 20px;
