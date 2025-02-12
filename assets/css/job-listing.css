@@ -140,6 +140,28 @@
   margin-right: 4px;
 }
 
+.remote-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.remote-status.is-remote {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.remote-status.not-remote {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.job-detail i.fa-laptop-house {
+  color: var(--alembic-primary);
+}
+
 .loading {
   text-align: center;
   padding: 40px 20px;

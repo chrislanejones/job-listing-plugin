@@ -7,7 +7,6 @@ A WordPress plugin that integrates job listings with Elementor page builder.
 - PHP 7.4 or higher
 - WordPress 5.0 or higher
 - Elementor plugin installed and activated
-- Composer (for development installation)
 
 ## Installation
 
@@ -56,8 +55,6 @@ composer install
 ## Troubleshooting
 
 ### Common Issues
-
-1. **Plugin Activation Error**: If you see an error about missing `autoload.php`, you need to run `composer install` in the plugin directory.
 
 2. **Elementor Not Found**: The plugin requires Elementor to be installed and activated.
 
