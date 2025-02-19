@@ -5,10 +5,30 @@
 
 .schedule-info-wrapper table {
   margin-bottom: 20px;
+  border-collapse: collapse;
+  width: 100%;
 }
 
 .job-listing-database-info {
   margin-top: 20px;
+}
+
+/* Table enhancements */
+.widefat {
+  border: 1px solid #ccd0d4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.widefat th {
+  background: #f8f9fa;
+  border-bottom: 1px solid #ccd0d4;
+  padding: 12px;
+  text-align: left;
+}
+
+.widefat td {
+  padding: 12px;
+  vertical-align: middle;
 }
 
 /* Status messages */
@@ -17,11 +37,13 @@
   padding: 5px 10px;
   border-radius: 3px;
   display: inline-block;
+  font-weight: 500;
 }
 
 .status-refreshing {
   background-color: #f0f0f1;
   color: #3c434a;
+  animation: pulse 1.5s infinite;
 }
 
 .status-success {
@@ -34,9 +56,32 @@
   color: #b32d2e;
 }
 
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 /* Tab navigation */
 .nav-tab-wrapper {
   margin-bottom: 20px;
+  border-bottom: 1px solid #c3c4c7;
+}
+
+.nav-tab {
+  margin-left: 0.5em;
+  margin-right: 0.5em;
+}
+
+.nav-tab:focus {
+  box-shadow: none;
+  outline: 1px solid #2271b1;
 }
 
 /* Setup form styles */
@@ -44,9 +89,15 @@
   max-width: 800px;
   margin: 20px 0;
   background: #fff;
-  padding: 20px;
+  padding: 25px;
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.setup-wizard-container h2 {
+  margin-top: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
 }
 
 .job-listing-setup-form {
@@ -54,15 +105,44 @@
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .form-group label {
   display: block;
   font-weight: 600;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
+.form-group .description {
+  margin-top: 8px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Input styles */
+.regular-text {
+  width: 100%;
+  max-width: 25em;
+}
+
+input[type="text"],
+select {
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  padding: 6px 8px;
+  line-height: 1.4;
+}
+
+input[type="text"]:focus,
+select:focus {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+  outline: 2px solid transparent;
+}
+
+/* Schedule times container */
 .schedule-times-container {
   display: flex;
   flex-wrap: wrap;
@@ -78,32 +158,38 @@
   width: 100%;
 }
 
+/* Submit container */
 .submit-container {
   margin-top: 30px;
   display: flex;
   align-items: center;
+  gap: 15px;
 }
 
 #setup-response {
   margin-right: 20px;
-  padding: 8px 12px;
+  padding: 10px 15px;
   border-radius: 4px;
   flex-grow: 1;
 }
 
+/* Message styles */
 .success-message {
   background-color: #ecf7ed;
   color: #00844a;
+  border: 1px solid #c3e6cb;
 }
 
 .error-message {
   background-color: #fcf0f1;
   color: #b32d2e;
+  border: 1px solid #f5c6cb;
 }
 
 .info-message {
   background-color: #f0f7fc;
   color: #1e88e5;
+  border: 1px solid #bee5eb;
 }
 
 /* Schedule list */
@@ -114,20 +200,96 @@
 }
 
 .schedule-times-list li {
-  padding: 5px 0;
+  padding: 8px 0;
   margin: 0;
   font-size: 14px;
+  display: flex;
+  align-items: center;
 }
 
 .schedule-times-list li:before {
   content: "⏰";
   margin-right: 8px;
   color: #2271b1;
+  font-size: 16px;
 }
 
 .schedule-note {
   font-style: italic;
   color: #666;
-  font-size: 0.9em;
+  font-size: 13px;
   margin-top: 15px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-left: 4px solid #2271b1;
+}
+
+/* Responsive styles */
+@media screen and (max-width: 782px) {
+  .schedule-times-container {
+    flex-direction: column;
+  }
+
+  .schedule-time-wrapper {
+    width: 100%;
+  }
+
+  .submit-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #setup-response {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+
+  .widefat {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Loading states */
+.loading {
+  position: relative;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #2271b1;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Button states */
+.button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Notice styles */
+.notice {
+  margin: 15px 0;
+}
+
+.notice p {
+  margin: 0.5em 0;
+  padding: 2px;
 }

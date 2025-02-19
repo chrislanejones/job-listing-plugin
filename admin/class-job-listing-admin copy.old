@@ -35,13 +35,6 @@ class Job_Listing_Admin {
     private $active_tab = 'settings';
 
     /**
-     * Constructor
-     */
-    public function __construct() {
-        $this->options = get_option('job_listing_settings', []);
-    }
-
-    /**
      * Initialize the admin functionality
      *
      * @return void
@@ -102,7 +95,7 @@ class Job_Listing_Admin {
         wp_enqueue_script(
             'job-listing-admin',
             JLP_PLUGIN_URL . 'admin/js/admin.js',
-            [],
+            ['jquery', 'jquery-ui-dialog', 'jquery-ui-datepicker'],
             JLP_VERSION,
             true
         );
@@ -182,43 +175,50 @@ class Job_Listing_Admin {
         }
     }
 
-    /**
-     * Render API section information
-     *
-     * @return void
-     */
-    public function render_api_section_info() {
-        echo '<p>' . esc_html__('Configure your Ashby API settings below.', 'job-listing-plugin') . '</p>';
-    }
+/**
+ * Render API section information
+ *
+ * @return void
+ */
+public function render_api_section_info() {
+    echo '<p>' . esc_html__('Configure your Ashby API settings below.', 'job-listing-plugin') . '</p>';
+}
 
-    /**
-     * Render organization ID field
-     *
-     * @return void
-     */
-    public function render_organization_id_field() {
-        $organization_id = isset($this->options['organization_id']) ? $this->options['organization_id'] : '';
-        ?>
-        <input type="text" 
-               id="organization_id" 
-               name="job_listing_settings[organization_id]" 
-               value="<?php echo esc_attr($organization_id); ?>" 
-               class="regular-text"
-        />
-        <p class="description">
-            <?php _e('Enter your Ashby organization ID. You can find this in your Ashby job board URL.', 'job-listing-plugin'); ?>
-        </p>
-        <?php
-    }
+/**
+ * Render organization ID field
+ *
+ * @return void
+ */
+public function render_organization_id_field() {
+    $organization_id = isset($this->options['organization_id']) ? $this->options['organization_id'] : '';
+    ?>
+    <input type="text" 
+           id="organization_id" 
+           name="job_listing_settings[organization_id]" 
+           value="<?php echo esc_attr($organization_id); ?>" 
+           class="regular-text"
+    />
+    <p class="description">
+        <?php _e('Enter your Ashby organization ID. You can find this in your Ashby job board URL.', 'job-listing-plugin'); ?>
+    </p>
+    <?php
+}
 
-    /**
-     * Render schedule section information
-     *
-     * @return void
-     */
-    public function render_schedule_section_info() {
-        echo '<p>' . esc_html__('Configure when the plugin should fetch job data from Ashby.', 'job-listing-plugin') . '</p>';
-    }
+/**
+ * Render schedule section information
+ *
+ * @return void
+ */
+public function render_schedule_section_info() {
+    echo '<p>' . esc_html__('Configure when the plugin should fetch job data from Ashby.', 'job-listing-plugin') . '</p>';
+}
+
+/**
+ * Constructor
+ */
+public function __construct() {
+    $this->options = get_option('job_listing_settings', []);
+}
 
     /**
      * Validate plugin settings

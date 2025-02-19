@@ -1,13 +1,54 @@
-document.addEventListener("DOMContentLoaded", function () {
-  // Handle refresh jobs button
-  const refreshButton = document.getElementById("refresh-jobs-button");
-  const statusElement = document.getElementById("refresh-status");
+(function ($) {
+  "use strict";
 
-  if (refreshButton) {
-    refreshButton.addEventListener("click", async function () {
-      refreshButton.disabled = true;
-      statusElement.textContent = "Refreshing...";
-      statusElement.className = "status-refreshing";
+  // Utility functions
+  const utils = {
+    showMessage: function (element, message, type, duration = 10000) {
+      element.textContent = message;
+      element.className = `status-${type}`;
+
+      if (duration && type !== "error") {
+        setTimeout(() => {
+          element.textContent = "";
+          element.className = "";
+        }, duration);
+      }
+    },
+
+    validateTime: function (time) {
+      return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+    },
+
+    debounce: function (func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    },
+  };
+
+  // Job refresh functionality
+  class JobRefresh {
+    constructor() {
+      this.button = document.getElementById("refresh-jobs-button");
+      this.status = document.getElementById("refresh-status");
+      this.lastFetchElement = document.getElementById("last-fetch-time");
+
+      if (this.button) {
+        this.button.addEventListener("click", this.handleRefresh.bind(this));
+      }
+    }
+
+    async handleRefresh() {
+      if (!this.button || !this.status) return;
+
+      this.button.disabled = true;
+      utils.showMessage(this.status, "Refreshing...", "refreshing", 0);
 
       try {
         const response = await fetch(jobListingAdmin.refreshEndpoint, {
@@ -16,136 +57,215 @@ document.addEventListener("DOMContentLoaded", function () {
             "X-WP-Nonce": jobListingAdmin.nonce,
             "Content-Type": "application/json",
           },
+          credentials: "same-origin",
         });
 
         if (!response.ok) {
-          throw new Error(`Error: ${response.status} ${response.statusText}`);
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
 
         if (data.success) {
-          statusElement.textContent = `Success! ${data.message}`;
-          statusElement.className = "status-success";
-
-          // Update last fetch time if provided
-          const lastFetchElement = document.getElementById("last-fetch-time");
-          if (lastFetchElement) {
-            const now = new Date();
-            lastFetchElement.textContent = now.toLocaleString();
-          }
+          utils.showMessage(this.status, `Success! ${data.message}`, "success");
+          this.updateLastFetchTime();
         } else {
           throw new Error(data.message || "Unknown error occurred");
         }
       } catch (error) {
-        statusElement.textContent = `Failed: ${error.message}`;
-        statusElement.className = "status-error";
         console.error("Refresh failed:", error);
+        utils.showMessage(this.status, `Failed: ${error.message}`, "error");
       } finally {
-        refreshButton.disabled = false;
-
-        // Auto-hide status after 10 seconds
-        setTimeout(() => {
-          if (statusElement.className !== "status-error") {
-            statusElement.textContent = "";
-            statusElement.className = "";
-          }
-        }, 10000);
+        this.button.disabled = false;
       }
-    });
+    }
+
+    updateLastFetchTime() {
+      if (this.lastFetchElement) {
+        const now = new Date();
+        const options = {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        };
+        this.lastFetchElement.textContent = now.toLocaleDateString(
+          undefined,
+          options
+        );
+      }
+    }
   }
 
-  // Handle setup form
-  const setupButton = document.getElementById("save-setup-button");
+  // Setup form functionality
+  class SetupForm {
+    constructor() {
+      this.button = document.getElementById("save-setup-button");
+      this.response = document.getElementById("setup-response");
+      this.form = document.querySelector(".job-listing-setup-form");
+      this.timeSelects = document.querySelectorAll('[id^="schedule_time_"]');
 
-  if (setupButton) {
-    setupButton.addEventListener("click", async function () {
-      // Get form values
+      if (this.button) {
+        this.initializeForm();
+      }
+    }
+
+    initializeForm() {
+      this.button.addEventListener("click", this.handleSubmit.bind(this));
+      this.initializeTimeSelects();
+      this.addFormValidation();
+    }
+
+    initializeTimeSelects() {
+      this.timeSelects.forEach((select) => {
+        select.addEventListener(
+          "change",
+          utils.debounce((event) => {
+            this.validateTimeSelection(event.target);
+          }, 250)
+        );
+      });
+    }
+
+    validateTimeSelection(changedSelect) {
+      const selectedValue = changedSelect.value;
+      if (!selectedValue) return;
+
+      const duplicateSelect = Array.from(this.timeSelects).find(
+        (select) => select !== changedSelect && select.value === selectedValue
+      );
+
+      if (duplicateSelect) {
+        utils.showMessage(
+          this.response,
+          "Each time slot must be unique. Please choose a different time.",
+          "error"
+        );
+        changedSelect.value = "";
+        changedSelect.focus();
+      }
+    }
+
+    addFormValidation() {
+      this.form.addEventListener(
+        "input",
+        utils.debounce(() => {
+          this.validateForm();
+        }, 300)
+      );
+    }
+
+    validateForm() {
       const organizationId = document.getElementById("organization_id").value;
-      const scheduleTime1 = document.getElementById("schedule_time_1").value;
-      const scheduleTime2 = document.getElementById("schedule_time_2").value;
-      const scheduleTime3 = document.getElementById("schedule_time_3").value;
-      const responseElement = document.getElementById("setup-response");
+      const hasScheduleTime = Array.from(this.timeSelects).some(
+        (select) => select.value
+      );
 
-      // Validate form
-      if (!organizationId) {
-        responseElement.textContent = "Organization ID is required";
-        responseElement.className = "error-message";
-        return;
-      }
+      this.button.disabled = !organizationId || !hasScheduleTime;
+    }
 
-      if (!scheduleTime1 && !scheduleTime2 && !scheduleTime3) {
-        responseElement.textContent = "At least one schedule time is required";
-        responseElement.className = "error-message";
-        return;
-      }
+    async handleSubmit() {
+      if (!this.validateSubmission()) return;
 
-      // Show loading state
-      setupButton.disabled = true;
-      setupButton.textContent = "Saving...";
-      responseElement.textContent = "Setting up schedules...";
-      responseElement.className = "info-message";
-
-      // Prepare form data
-      const formData = new FormData();
-      formData.append("action", "save_job_listing_setup");
-      formData.append("nonce", jobListingAdmin.nonce);
-      formData.append("organization_id", organizationId);
-
-      if (scheduleTime1) formData.append("schedule_time_1", scheduleTime1);
-      if (scheduleTime2) formData.append("schedule_time_2", scheduleTime2);
-      if (scheduleTime3) formData.append("schedule_time_3", scheduleTime3);
+      this.setLoadingState(true);
 
       try {
-        const response = await fetch(jobListingAdmin.ajaxUrl, {
-          method: "POST",
-          body: formData,
-          credentials: "same-origin",
-        });
-
-        const result = await response.json();
+        const formData = this.getFormData();
+        const result = await this.submitForm(formData);
 
         if (result.success) {
-          responseElement.textContent = result.data.message;
-          responseElement.className = "success-message";
-
-          // Redirect after successful setup
-          setTimeout(() => {
-            window.location.href = result.data.redirect;
-          }, 1500);
+          this.handleSuccess(result);
         } else {
           throw new Error(result.data?.message || "Failed to save setup");
         }
       } catch (error) {
-        responseElement.textContent = `Error: ${error.message}`;
-        responseElement.className = "error-message";
-        console.error("Setup failed:", error);
+        this.handleError(error);
       } finally {
-        setupButton.disabled = false;
-        setupButton.textContent = jobListingAdmin.setupComplete
-          ? "Update Setup"
-          : "Complete Setup";
+        this.setLoadingState(false);
       }
-    });
+    }
 
-    // Handle schedule time selection uniqueness
-    const timeSelects = document.querySelectorAll('[id^="schedule_time_"]');
+    validateSubmission() {
+      const organizationId = document.getElementById("organization_id").value;
+      const hasScheduleTime = Array.from(this.timeSelects).some(
+        (select) => select.value
+      );
 
-    timeSelects.forEach((select) => {
-      select.addEventListener("change", () => {
-        const selectedValue = select.value;
-        if (!selectedValue) return;
+      if (!organizationId || !hasScheduleTime) {
+        utils.showMessage(
+          this.response,
+          "Please fill in all required fields",
+          "error"
+        );
+        return false;
+      }
 
-        // Check if this time is selected in another dropdown
-        timeSelects.forEach((otherSelect) => {
-          if (otherSelect !== select && otherSelect.value === selectedValue) {
-            alert(
-              "You've already selected this time. Please choose a different time."
-            );
-            select.value = "";
-          }
-        });
+      return true;
+    }
+
+    getFormData() {
+      const formData = new FormData();
+      formData.append("action", "save_job_listing_setup");
+      formData.append("nonce", jobListingAdmin.nonce);
+      formData.append(
+        "organization_id",
+        document.getElementById("organization_id").value
+      );
+
+      this.timeSelects.forEach((select, index) => {
+        if (select.value) {
+          formData.append(`schedule_time_${index + 1}`, select.value);
+        }
       });
-    });
+
+      return formData;
+    }
+
+    async submitForm(formData) {
+      const response = await fetch(jobListingAdmin.ajaxUrl, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    }
+
+    handleSuccess(result) {
+      utils.showMessage(this.response, result.data.message, "success");
+
+      setTimeout(() => {
+        window.location.href = result.data.redirect;
+      }, 1500);
+    }
+
+    handleError(error) {
+      console.error("Setup failed:", error);
+      utils.showMessage(this.response, `Error: ${error.message}`, "error");
+    }
+
+    setLoadingState(isLoading) {
+      this.button.disabled = isLoading;
+      this.button.textContent = isLoading
+        ? "Saving..."
+        : jobListingAdmin.setupComplete
+        ? "Update Setup"
+        : "Complete Setup";
+
+      if (isLoading) {
+        utils.showMessage(this.response, "Setting up schedules...", "info");
+      }
+    }
   }
-});
+
+  // Initialize when DOM is ready
+  document.addEventListener("DOMContentLoaded", function () {
+    new JobRefresh();
+    new SetupForm();
+  });
+})(jQuery);
