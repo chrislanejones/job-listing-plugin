@@ -34,6 +34,7 @@ class Job_Listing_Admin {
         
         wp_localize_script('job-listing-admin', 'jobListingAdmin', [
             'refreshEndpoint' => rest_url('job-listing/v1/refresh'),
+            'initializeEndpoint' => rest_url('job-listing/v1/initialize-schedule'),
             'nonce' => wp_create_nonce('wp_rest')
         ]);
     }

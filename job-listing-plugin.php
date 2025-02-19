@@ -3,7 +3,7 @@
 Plugin Name: Job Listing Plugin
 Plugin URI: 
 Description: A comprehensive job listing plugin with Elementor integration
-Version: 1.0
+Version: 1.1
 Author: Chris Lane Jones
 */
 

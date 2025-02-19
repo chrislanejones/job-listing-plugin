@@ -278,9 +278,8 @@ class Job_Listing_Plugin {
             '5.15.4'
         );
 
-        wp_localize_script('job-listing-admin', 'jobListingAdmin', [
-            'refreshEndpoint' => rest_url('job-listing/v1/refresh'),
-            'initializeEndpoint' => rest_url('job-listing/v1/initialize-schedule'),
+        wp_localize_script('job-listing-script', 'jobListingData', [
+            'ajaxUrl' => rest_url('job-listing/v1/list'),
             'nonce' => wp_create_nonce('wp_rest')
         ]);
     }
