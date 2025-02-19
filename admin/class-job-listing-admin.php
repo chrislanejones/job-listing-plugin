@@ -364,3 +364,14 @@ class Job_Listing_Admin {
         ]);
     }
 }
+
+function jlp_add_uninstall_warning() {
+    ?>
+    <div class="notice notice-warning">
+        <p>
+            <?php _e('Warning: Uninstalling this plugin will permanently delete all job listings, 
+            applications, and related data. This action cannot be undone.', 'job-listing-plugin'); ?>
+        </p>
+    </div>
+    <?php
+}

@@ -83,3 +83,5 @@ function jlp_deactivate() {
     $plugin = Job_Listing_Plugin::get_instance();
     $plugin->deactivate_scheduler();
 }
+
+register_uninstall_hook(__FILE__, 'jlp_uninstall_plugin');
