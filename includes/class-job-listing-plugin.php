@@ -278,8 +278,9 @@ class Job_Listing_Plugin {
             '5.15.4'
         );
 
-        wp_localize_script('job-listing-script', 'jobListingData', [
-            'ajaxUrl' => rest_url('job-listing/v1/list'),
+        wp_localize_script('job-listing-admin', 'jobListingAdmin', [
+            'refreshEndpoint' => rest_url('job-listing/v1/refresh'),
+            'initializeEndpoint' => rest_url('job-listing/v1/initialize-schedule'),
             'nonce' => wp_create_nonce('wp_rest')
         ]);
     }
@@ -298,6 +299,38 @@ class Job_Listing_Plugin {
                 return current_user_can('manage_options');
             }
         ]);
+        
+        // New endpoint for initializing schedule
+        register_rest_route('job-listing/v1', '/initialize-schedule', [
+            'methods' => 'GET',
+            'callback' => [$this, 'initialize_schedule'],
+            'permission_callback' => function () {
+                return current_user_can('manage_options');
+            }
+        ]);
+    }
+    
+    public function initialize_schedule() {
+        if (!current_user_can('manage_options')) {
+            return new WP_Error(
+                'rest_forbidden',
+                'Sorry, you are not allowed to do that.',
+                ['status' => 401]
+            );
+        }
+        
+        $this->activate_scheduler();
+        
+        // Also trigger an immediate data fetch
+        $result = $this->fetch_and_store_jobs();
+        
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'Schedule initialized successfully.',
+            'next_scheduled' => wp_next_scheduled(self::SCHEDULE_HOOK) 
+                ? date('Y-m-d H:i:s', wp_next_scheduled(self::SCHEDULE_HOOK)) 
+                : null
+        ], 200);
     }
     
     public function refresh_jobs_data() {

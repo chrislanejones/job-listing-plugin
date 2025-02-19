@@ -87,6 +87,11 @@ class Job_Listing_Admin {
             ? $cron_schedules[Job_Listing_Plugin::SCHEDULE_RECURRENCE]['display'] 
             : 'Three times daily';
         
+        if (!wp_next_scheduled(Job_Listing_Plugin::SCHEDULE_HOOK)) {
+            echo '<div class="notice notice-warning inline"><p>Schedule is not set. Click the button below to initialize it.</p></div>';
+            echo '<p><button type="button" id="initialize-schedule-button" class="button">Initialize Schedule</button></p>';
+        }
+
         ?>
         <div class="schedule-info-wrapper">
             <p>The plugin automatically fetches job data from the Ashby API <?php echo $schedule_display; ?>.</p>
