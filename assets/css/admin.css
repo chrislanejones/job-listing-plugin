@@ -1,0 +1,40 @@
+/* Admin Page */
+
+.schedule-info-wrapper {
+  margin: 20px 0;
+}
+
+.schedule-info-wrapper table {
+  margin-bottom: 20px;
+}
+
+.schedule-info-wrapper ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+#refresh-status {
+  margin-left: 10px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.status-refreshing {
+  background-color: #f0f0f1;
+  color: #3c434a;
+}
+
+.status-success {
+  background-color: #ecf7ed;
+  color: #00844a;
+}
+
+.status-error {
+  background-color: #fcf0f1;
+  color: #b32d2e;
+}
+
+.job-listing-database-info {
+  margin-top: 40px;
+}

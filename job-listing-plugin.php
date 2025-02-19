@@ -4,7 +4,7 @@ Plugin Name: Job Listing Plugin
 Plugin URI: 
 Description: A comprehensive job listing plugin with Elementor integration
 Version: 1.0
-Author: CLJ
+Author: Chris Lane Jones
 */
 
 // Prevent direct access
@@ -60,14 +60,26 @@ function jlp_activate() {
 
     // Add default options
     $default_options = [
-        'client_url' => 'https://api.ashbyhq.com/jobBoard.list',
-        'api_key' => ''
+        'organization_id' => '',
+        'refresh_frequency' => 'thrice_daily'
     ];
     add_option('job_listing_settings', $default_options);
+    
+    // Create database table
+    $plugin = Job_Listing_Plugin::get_instance();
+    $plugin->create_db_table();
+    
+    // Schedule the cron job
+    $plugin->activate_scheduler();
+    
+    // Initial data fetch
+    $plugin->fetch_and_store_jobs();
 }
 
 // Deactivation hook
 register_deactivation_hook(__FILE__, 'jlp_deactivate');
 function jlp_deactivate() {
-    // Cleanup if needed
+    // Clear scheduled events
+    $plugin = Job_Listing_Plugin::get_instance();
+    $plugin->deactivate_scheduler();
 }

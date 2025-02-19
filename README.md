@@ -1,6 +1,7 @@
 # Job Listing Plugin
 
-A WordPress plugin that integrates job listings with Elementor page builder.
+A WordPress plugin that integrates Ashby job listings with Elementor page builder.
+It uses the API on this page - https://developers.ashbyhq.com/docs/public-job-posting-api#example
 
 ## Requirements
 
@@ -25,14 +26,7 @@ cd /path/to/wp-content/plugins/
 git clone https://github.com/yourusername/job-listing-plugin.git
 ```
 
-2. Install dependencies using Composer:
-
-```bash
-cd job-listing-plugin
-composer install
-```
-
-3. Activate the plugin through the 'Plugins' menu in WordPress
+2. Activate the plugin through the 'Plugins' menu in WordPress
 
 ## Configuration
 
