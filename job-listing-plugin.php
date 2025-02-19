@@ -1,55 +1,56 @@
 <?php
-/*
-Plugin Name: Job Listing Plugin
-Plugin URI:
-Description: A comprehensive job listing plugin with Elementor integration
-Version: 1.3.1
-Author: Chris Lane Jones
-Author URI:
-License: GPL v2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.txt
-Text Domain: job-listing-plugin
-Domain Path: /languages
-*/
+/**
+ * Plugin Name: Job Listing Plugin
+ * Plugin URI: 
+ * Description: A comprehensive job listing plugin with Elementor integration
+ * Version: 1.3.1
+ * Author: Chris Lane Jones
+ * Requires at least: 5.6
+ * Requires PHP: 7.4
+ */
+
+namespace JobListingPlugin;
 
 // Prevent direct access
 if (!defined('ABSPATH')) {
-    exit('Direct access denied.');
+    exit;
 }
 
 // Define plugin constants
-define('JLP_VERSION', '1.3.1'); // Match with plugin version above
-define('JLP_MINIMUM_PHP_VERSION', '7.4');
-define('JLP_MINIMUM_WP_VERSION', '5.6');
-define('JLP_PLUGIN_FILE', __FILE__);
-define('JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('JLP_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('JobListingPlugin\JLP_VERSION', '1.3.1');
+define('JobListingPlugin\JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('JobListingPlugin\JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('JobListingPlugin\JLP_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('JobListingPlugin\JLP_MINIMUM_PHP_VERSION', '7.4');
 
-// Autoloader for plugin classes
+// Explicitly require necessary files
+require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-plugin.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-admin.php';
+
+// Autoloader
 spl_autoload_register(function ($class) {
-    // Plugin namespace prefix
+    // Only autoload classes in our namespace
     $prefix = 'JobListingPlugin\\';
-    $base_dir = JLP_PLUGIN_DIR . 'includes/';
-
-    // Check if the class uses the namespace prefix
+    $base_dir = plugin_dir_path(__FILE__) . 'includes/';
+    
+    // Check if the class uses our namespace
     $len = strlen($prefix);
     if (strncmp($prefix, $class, $len) !== 0) {
         return;
     }
-
-    // Get the relative class name
+    
+    // Remove namespace prefix and convert namespace to file path
     $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
+    $file = $base_dir . 'class-' . str_replace(['_', '\\'], ['-', '/'], strtolower($relative_class)) . '.php';
+    
     // If the file exists, require it
     if (file_exists($file)) {
-        require $file;
+        require_once $file;
     }
 });
 
-// Main plugin class
-final class Job_Listing_Plugin_Init {
+// Main plugin initialization class
+class Job_Listing_Plugin_Core {
     private static $instance = null;
 
     public static function instance() {
@@ -60,73 +61,32 @@ final class Job_Listing_Plugin_Init {
     }
 
     private function __construct() {
-        $this->check_requirements();
         $this->init_hooks();
     }
 
-    private function check_requirements() {
-        // Check PHP Version
-        if (version_compare(PHP_VERSION, JLP_MINIMUM_PHP_VERSION, '<')) {
-            add_action('admin_notices', [$this, 'php_version_notice']);
-            return;
-        }
-
-        // Check WordPress Version
-        if (version_compare(get_bloginfo('version'), JLP_MINIMUM_WP_VERSION, '<')) {
-            add_action('admin_notices', [$this, 'wp_version_notice']);
-            return;
-        }
-
-        // Load plugin files
-        $this->load_files();
-    }
-
-    private function load_files() {
-        // Load core plugin class
-        require_once JLP_PLUGIN_DIR . 'includes/class-job-listing-plugin.php';
-
-        // Load admin functionality
-        if (is_admin()) {
-            require_once JLP_PLUGIN_DIR . 'admin/class-job-listing-admin.php';
-        }
-    }
-
     private function init_hooks() {
-        add_action('plugins_loaded', [$this, 'init_plugin']);
-        register_activation_hook(JLP_PLUGIN_FILE, [$this, 'activate']);
-        register_deactivation_hook(JLP_PLUGIN_FILE, [$this, 'deactivate']);
-        register_uninstall_hook(JLP_PLUGIN_FILE, ['Job_Listing_Plugin_Init', 'uninstall']);
+        add_action('plugins_loaded', [$this, 'load_plugin']);
+        register_activation_hook(JLP_PLUGIN_BASENAME, [$this, 'activate']);
+        register_deactivation_hook(JLP_PLUGIN_BASENAME, [$this, 'deactivate']);
     }
 
-    public function init_plugin() {
-        // Initialize text domain for internationalization
-        load_plugin_textdomain(
-            'job-listing-plugin',
-            false,
-            dirname(JLP_PLUGIN_BASENAME) . '/languages/'
-        );
-
-        // Check if Elementor is installed and activated
-        if (!did_action('elementor/loaded')) {
-            add_action('admin_notices', [$this, 'elementor_missing_notice']);
-            return;
-        }
-
+    public function load_plugin() {
         // Initialize plugin
-        $plugin = Job_Listing_Plugin::get_instance();
-        $plugin->init();
+        try {
+            $plugin = Job_Listing_Plugin::get_instance();
+            $plugin->init();
 
-        if (is_admin()) {
-            $admin = new Job_Listing_Admin();
-            $admin->init();
+            // Initialize admin if in admin area
+            if (is_admin()) {
+                $admin = Job_Listing_Admin::get_instance();
+                $admin->init();
+            }
+        } catch (\Exception $e) {
+            error_log('Job Listing Plugin Initialization Error: ' . $e->getMessage());
         }
     }
 
     public function activate() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
         // Check PHP version
         if (version_compare(PHP_VERSION, JLP_MINIMUM_PHP_VERSION, '<')) {
             deactivate_plugins(JLP_PLUGIN_BASENAME);
@@ -138,22 +98,18 @@ final class Job_Listing_Plugin_Init {
             );
         }
 
-        // Add default options
-        $default_options = [
-            'organization_id' => '',
-            'refresh_frequency' => 'thrice_daily',
-            'setup_complete' => false
-        ];
-        add_option('job_listing_settings', $default_options);
-
-        // Initialize plugin instance
+        // Get plugin instance
         $plugin = Job_Listing_Plugin::get_instance();
         
         // Create database table
         $plugin->create_db_table();
 
-        // Schedule the cron job
-        $plugin->activate_scheduler();
+        // Default schedule times if not set
+        $settings = get_option('job_listing_settings', []);
+        $schedule_times = isset($settings['schedule_times']) ? $settings['schedule_times'] : ['08:00', '16:00'];
+
+        // Activate scheduler
+        $plugin->activate_scheduler($schedule_times);
 
         // Initial data fetch
         $plugin->fetch_and_store_jobs();
@@ -163,88 +119,20 @@ final class Job_Listing_Plugin_Init {
     }
 
     public function deactivate() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
-        // Clear scheduled events
+        // Get plugin instance
         $plugin = Job_Listing_Plugin::get_instance();
+        
+        // Deactivate scheduler
         $plugin->deactivate_scheduler();
 
         // Flush rewrite rules
         flush_rewrite_rules();
     }
-
-    public static function uninstall() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
-        // Cleanup will be handled by uninstall.php
-    }
-
-    public function elementor_missing_notice() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
-        $screen = get_current_screen();
-        if (isset($screen->parent_file) && 'plugins.php' === $screen->parent_file && 'update' === $screen->id) {
-            return;
-        }
-
-        $plugin = 'elementor/elementor.php';
-        $installed_plugins = get_plugins();
-
-        if (isset($installed_plugins[$plugin])) {
-            $activation_url = wp_nonce_url('plugins.php?action=activate&plugin=' . $plugin, 'activate-plugin_' . $plugin);
-            $message = sprintf(
-                __('Job Listing Plugin requires Elementor to be activated. %1$sActivate Elementor%2$s', 'job-listing-plugin'),
-                '<a href="' . $activation_url . '">',
-                '</a>'
-            );
-        } else {
-            $activation_url = wp_nonce_url(self_admin_url('update.php?action=install-plugin&plugin=elementor'), 'install-plugin_elementor');
-            $message = sprintf(
-                __('Job Listing Plugin requires Elementor to be installed and activated. %1$sInstall Elementor%2$s', 'job-listing-plugin'),
-                '<a href="' . $activation_url . '">',
-                '</a>'
-            );
-        }
-
-        echo '<div class="notice notice-warning is-dismissible"><p>' . wp_kses_post($message) . '</p></div>';
-    }
-
-    public function php_version_notice() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
-        echo '<div class="notice notice-error"><p>' . 
-             sprintf(
-                 __('Job Listing Plugin requires PHP version %s or higher.', 'job-listing-plugin'),
-                 JLP_MINIMUM_PHP_VERSION
-             ) . 
-             '</p></div>';
-    }
-
-    public function wp_version_notice() {
-        if (!current_user_can('activate_plugins')) {
-            return;
-        }
-
-        echo '<div class="notice notice-error"><p>' . 
-             sprintf(
-                 __('Job Listing Plugin requires WordPress version %s or higher.', 'job-listing-plugin'),
-                 JLP_MINIMUM_WP_VERSION
-             ) . 
-             '</p></div>';
-    }
 }
 
 // Initialize the plugin
 function jlp_init() {
-    return Job_Listing_Plugin_Init::instance();
+    return Job_Listing_Plugin_Core::instance();
 }
 
 // Start the plugin

@@ -1,4 +1,6 @@
 <?php
+namespace JobListingPlugin;
+
 class Job_Listing_Plugin {
     private static $instance = null;
     private $options;
@@ -18,6 +20,27 @@ class Job_Listing_Plugin {
         $this->db_table = $wpdb->prefix . 'job_listings';
     }
 
+    /**
+     * Get all scheduled events for a specific hook
+     * 
+     * @param string $hook The hook name to look for
+     * @return array Timestamps of scheduled events
+     */
+    private function get_scheduled_events($hook) {
+        $crons = _get_cron_array();
+        $events = [];
+        
+        if (!empty($crons)) {
+            foreach ($crons as $timestamp => $cron) {
+                if (isset($cron[$hook])) {
+                    $events[] = $timestamp;
+                }
+            }
+        }
+        
+        return $events;
+    }
+
     public function init() {
         $this->options = get_option('job_listing_settings');
         
@@ -27,6 +50,162 @@ class Job_Listing_Plugin {
         
         // Schedule API fetch hook
         add_action(self::SCHEDULE_HOOK, [$this, 'fetch_and_store_jobs']);
+    }
+
+    public function register_widgets() {
+        // Ensure Elementor is loaded
+        if (!did_action('elementor/loaded')) {
+            return;
+        }
+
+        // Include the widget file
+        require_once(JLP_PLUGIN_DIR . 'includes/widgets/class-job-listing-widget.php');
+
+        // Register the widget
+        \Elementor\Plugin::instance()->widgets_manager->register_widget_type(
+            new \JobListingPlugin\Job_Listing_Widget()
+        );
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_style(
+            'job-listing-style',
+            JLP_PLUGIN_URL . 'assets/css/job-listing.css',
+            [],
+            JLP_VERSION
+        );
+
+        wp_enqueue_script(
+            'job-listing-script',
+            JLP_PLUGIN_URL . 'assets/js/job-listing.js',
+            [], // No jQuery dependency
+            JLP_VERSION,
+            true
+        );
+
+        wp_enqueue_style(
+            'font-awesome',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+            [],
+            '5.15.4'
+        );
+
+        wp_localize_script('job-listing-script', 'jobListingData', [
+            'ajaxUrl' => rest_url('job-listing/v1/list'),
+            'nonce' => wp_create_nonce('wp_rest')
+        ]);
+    }
+
+    public function register_rest_route() {
+        register_rest_route('job-listing/v1', '/list', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_jobs_list'],
+            'permission_callback' => '__return_true'
+        ]);
+        
+        register_rest_route('job-listing/v1', '/refresh', [
+            'methods' => 'GET',
+            'callback' => [$this, 'refresh_jobs_data'],
+            'permission_callback' => function () {
+                return current_user_can('manage_options');
+            }
+        ]);
+        
+        // New endpoint for initializing schedule
+        register_rest_route('job-listing/v1', '/initialize-schedule', [
+            'methods' => 'GET',
+            'callback' => [$this, 'initialize_schedule'],
+            'permission_callback' => function () {
+                return current_user_can('manage_options');
+            }
+        ]);
+    }
+    
+    public function initialize_schedule() {
+        if (!current_user_can('manage_options')) {
+            return new \WP_Error(
+                'rest_forbidden',
+                'Sorry, you are not allowed to do that.',
+                ['status' => 401]
+            );
+        }
+        
+        $this->activate_scheduler($this->options['schedule_times'] ?? []);
+        
+        // Also trigger an immediate data fetch
+        $result = $this->fetch_and_store_jobs();
+        
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => 'Schedule initialized successfully.',
+            'next_scheduled' => wp_next_scheduled(self::SCHEDULE_HOOK) 
+                ? date('Y-m-d H:i:s', wp_next_scheduled(self::SCHEDULE_HOOK)) 
+                : null
+        ], 200);
+    }
+    
+    public function refresh_jobs_data() {
+        if (!current_user_can('manage_options')) {
+            return new \WP_Error(
+                'rest_forbidden',
+                'Sorry, you are not allowed to do that.',
+                ['status' => 401]
+            );
+        }
+        
+        $result = $this->fetch_and_store_jobs();
+        
+        if ($result === false) {
+            return new \WP_Error(
+                'api_error',
+                'Failed to fetch or store jobs',
+                ['status' => 500]
+            );
+        }
+        
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => sprintf(
+                'Successfully refreshed jobs data. Added: %d, Updated: %d, Removed: %d',
+                $result['added'],
+                $result['updated'],
+                $result['removed']
+            ),
+            'data' => $result
+        ], 200);
+    }
+
+    public function get_jobs_list() {
+        try {
+            $jobs = $this->get_jobs_from_db();
+            
+            if (empty($jobs)) {
+                // Try to fetch from API if no jobs in DB
+                $api_result = $this->fetch_and_store_jobs();
+                if ($api_result !== false) {
+                    $jobs = $this->get_jobs_from_db();
+                }
+                
+                if (empty($jobs)) {
+                    return new \WP_Error(
+                        'no_jobs',
+                        'No jobs found',
+                        ['status' => 404]
+                    );
+                }
+            }
+            
+            return new \WP_REST_Response([
+                'jobs' => $jobs
+            ], 200);
+
+        } catch (\Exception $e) {
+            return new \WP_Error(
+                'db_error',
+                'Unexpected error: ' . $e->getMessage(),
+                ['status' => 500]
+            );
+        }
     }
 
     public function activate_scheduler($schedule_times) {
@@ -62,7 +241,7 @@ class Job_Listing_Plugin {
 
     public function deactivate_scheduler() {
         // Get all scheduled times for our hook
-        $timestamps = wp_get_scheduled_events(self::SCHEDULE_HOOK);
+        $timestamps = $this->get_scheduled_events(self::SCHEDULE_HOOK);
         
         // Clear each scheduled event
         if (!empty($timestamps)) {
@@ -70,32 +249,6 @@ class Job_Listing_Plugin {
                 wp_unschedule_event($timestamp, self::SCHEDULE_HOOK);
             }
         }
-    }
-
-    public function create_db_table() {
-        global $wpdb;
-        
-        $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->db_table} (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            job_id varchar(64) NOT NULL,
-            title text NOT NULL,
-            department varchar(255),
-            team varchar(255),
-            employment_type varchar(100),
-            location varchar(255),
-            is_remote tinyint(1) DEFAULT 0,
-            application_url text,
-            date_added datetime DEFAULT CURRENT_TIMESTAMP,
-            date_updated datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            last_fetch_hash varchar(32),
-            PRIMARY KEY  (id),
-            UNIQUE KEY job_id (job_id)
-        ) $charset_collate;";
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
     }
 
     public function fetch_and_store_jobs() {
@@ -271,158 +424,12 @@ class Job_Listing_Plugin {
         return $jobs;
     }
 
-    public function register_widgets() {
-        require_once(JLP_PLUGIN_DIR . 'includes/widgets/class-job-listing-widget.php');
-        \Elementor\Plugin::instance()->widgets_manager->register_widget_type(new Job_Listing_Widget());
-    }
-
-    public function enqueue_scripts() {
-        wp_enqueue_style(
-            'job-listing-style',
-            JLP_PLUGIN_URL . 'assets/css/job-listing.css',
-            [],
-            JLP_VERSION
-        );
-
-        wp_enqueue_script(
-            'job-listing-script',
-            JLP_PLUGIN_URL . 'assets/js/job-listing.js',
-            [], // No jQuery dependency
-            JLP_VERSION,
-            true
-        );
-
-        wp_enqueue_style(
-            'font-awesome',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-            [],
-            '5.15.4'
-        );
-
-        wp_localize_script('job-listing-script', 'jobListingData', [
-            'ajaxUrl' => rest_url('job-listing/v1/list'),
-            'nonce' => wp_create_nonce('wp_rest')
-        ]);
-    }
-
-    public function register_rest_route() {
-        register_rest_route('job-listing/v1', '/list', [
-            'methods' => 'GET',
-            'callback' => [$this, 'get_jobs_list'],
-            'permission_callback' => '__return_true'
-        ]);
-        
-        register_rest_route('job-listing/v1', '/refresh', [
-            'methods' => 'GET',
-            'callback' => [$this, 'refresh_jobs_data'],
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
-            }
-        ]);
-        
-        // New endpoint for initializing schedule
-        register_rest_route('job-listing/v1', '/initialize-schedule', [
-            'methods' => 'GET',
-            'callback' => [$this, 'initialize_schedule'],
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
-            }
-        ]);
-    }
-    
-    public function initialize_schedule() {
-        if (!current_user_can('manage_options')) {
-            return new WP_Error(
-                'rest_forbidden',
-                'Sorry, you are not allowed to do that.',
-                ['status' => 401]
-            );
-        }
-        
-        $this->activate_scheduler($this->options['schedule_times'] ?? []);
-        
-        // Also trigger an immediate data fetch
-        $result = $this->fetch_and_store_jobs();
-        
-        return new WP_REST_Response([
-            'success' => true,
-            'message' => 'Schedule initialized successfully.',
-            'next_scheduled' => wp_next_scheduled(self::SCHEDULE_HOOK) 
-                ? date('Y-m-d H:i:s', wp_next_scheduled(self::SCHEDULE_HOOK)) 
-                : null
-        ], 200);
-    }
-    
-    public function refresh_jobs_data() {
-        if (!current_user_can('manage_options')) {
-            return new WP_Error(
-                'rest_forbidden',
-                'Sorry, you are not allowed to do that.',
-                ['status' => 401]
-            );
-        }
-        
-        $result = $this->fetch_and_store_jobs();
-        
-        if ($result === false) {
-            return new WP_Error(
-                'api_error',
-                'Failed to fetch or store jobs',
-                ['status' => 500]
-            );
-        }
-        
-        return new WP_REST_Response([
-            'success' => true,
-            'message' => sprintf(
-                'Successfully refreshed jobs data. Added: %d, Updated: %d, Removed: %d',
-                $result['added'],
-                $result['updated'],
-                $result['removed']
-            ),
-            'data' => $result
-        ], 200);
-    }
-
-    public function get_jobs_list() {
-        try {
-            $jobs = $this->get_jobs_from_db();
-            
-            if (empty($jobs)) {
-                // Try to fetch from API if no jobs in DB
-                $api_result = $this->fetch_and_store_jobs();
-                if ($api_result !== false) {
-                    $jobs = $this->get_jobs_from_db();
-                }
-                
-                if (empty($jobs)) {
-                    return new WP_Error(
-                        'no_jobs',
-                        'No jobs found',
-                        ['status' => 404]
-                    );
-                }
-            }
-            
-            return new WP_REST_Response([
-                'jobs' => $jobs
-            ], 200);
-
-        } catch (Exception $e) {
-            return new WP_Error(
-                'db_error',
-                'Unexpected error: ' . $e->getMessage(),
-                ['status' => 500]
-            );
-        }
-    }
-    
     public function get_last_fetch_info() {
         $last_fetch = get_option('job_listing_last_fetch', null);
         
         // Get all scheduled times for our hook
         $scheduled_times = [];
-        $timestamps = wp_get_scheduled_events(self::SCHEDULE_HOOK);
+        $timestamps = $this->get_scheduled_events(self::SCHEDULE_HOOK);
         
         if (!empty($timestamps)) {
             foreach ($timestamps as $timestamp) {
@@ -442,7 +449,7 @@ class Job_Listing_Plugin {
     // New method to save setup and initialize scheduling
     public function save_setup($organization_id, $schedule_times) {
         if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
-            return new WP_Error(
+            return new \WP_Error(
                 'invalid_setup',
                 'Organization ID and at least one schedule time are required',
                 ['status' => 400]
@@ -460,7 +467,7 @@ class Job_Listing_Plugin {
         $scheduling_result = $this->activate_scheduler($schedule_times);
         
         if (!$scheduling_result) {
-            return new WP_Error(
+            return new \WP_Error(
                 'scheduling_error',
                 'Failed to schedule jobs with provided times',
                 ['status' => 500]
@@ -475,7 +482,33 @@ class Job_Listing_Plugin {
             'organization_id' => $organization_id,
             'schedule_times' => $schedule_times,
             'fetch_result' => $fetch_result,
-            'scheduled_events' => wp_get_scheduled_events(self::SCHEDULE_HOOK)
+            'scheduled_events' => $this->get_scheduled_events(self::SCHEDULE_HOOK)
         ];
+    }
+
+    public function create_db_table() {
+        global $wpdb;
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->db_table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            job_id varchar(64) NOT NULL,
+            title text NOT NULL,
+            department varchar(255),
+            team varchar(255),
+            employment_type varchar(100),
+            location varchar(255),
+            is_remote tinyint(1) DEFAULT 0,
+            application_url text,
+            date_added datetime DEFAULT CURRENT_TIMESTAMP,
+            date_updated datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            last_fetch_hash varchar(32),
+            PRIMARY KEY  (id),
+            UNIQUE KEY job_id (job_id)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 }

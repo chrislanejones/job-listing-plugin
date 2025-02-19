@@ -1,295 +1,227 @@
-/* General styles */
-.schedule-info-wrapper {
-  margin: 20px 0;
+/* Global Admin Styles */
+.job-listing-admin-wrap {
+  max-width: 1200px;
+  margin: 20px auto;
+  background: #f0f0f0;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.schedule-info-wrapper table {
+.job-listing-admin-wrap h1 {
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 15px;
   margin-bottom: 20px;
-  border-collapse: collapse;
-  width: 100%;
 }
 
-.job-listing-database-info {
-  margin-top: 20px;
-}
-
-/* Table enhancements */
-.widefat {
-  border: 1px solid #ccd0d4;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.widefat th {
-  background: #f8f9fa;
-  border-bottom: 1px solid #ccd0d4;
-  padding: 12px;
-  text-align: left;
-}
-
-.widefat td {
-  padding: 12px;
-  vertical-align: middle;
-}
-
-/* Status messages */
-#refresh-status {
-  margin-left: 10px;
-  padding: 5px 10px;
-  border-radius: 3px;
-  display: inline-block;
-  font-weight: 500;
-}
-
-.status-refreshing {
-  background-color: #f0f0f1;
-  color: #3c434a;
-  animation: pulse 1.5s infinite;
-}
-
-.status-success {
-  background-color: #ecf7ed;
-  color: #00844a;
-}
-
-.status-error {
-  background-color: #fcf0f1;
-  color: #b32d2e;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-/* Tab navigation */
-.nav-tab-wrapper {
+/* Tabs Navigation */
+.job-listing-tabs {
+  display: flex;
   margin-bottom: 20px;
-  border-bottom: 1px solid #c3c4c7;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.nav-tab {
-  margin-left: 0.5em;
-  margin-right: 0.5em;
+.job-listing-tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  margin-right: 5px;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  transition: background-color 0.3s ease;
 }
 
-.nav-tab:focus {
-  box-shadow: none;
-  outline: 1px solid #2271b1;
+.job-listing-tab:hover {
+  background-color: #f0f0f0;
 }
 
-/* Setup form styles */
-.setup-wizard-container {
-  max-width: 800px;
-  margin: 20px 0;
-  background: #fff;
-  padding: 25px;
+.job-listing-tab.active {
+  background-color: #ffffff;
+  border-bottom: 1px solid #ffffff;
+  font-weight: bold;
+}
+
+/* Tab Content */
+.job-listing-tab-content {
+  background: #ffffff;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 0 0 4px 4px;
+}
+
+/* Setup Tab Styles */
+.setup-form-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.setup-form-section > div {
+  background: #f9f9f9;
+  padding: 15px;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
 }
 
-.setup-wizard-container h2 {
-  margin-top: 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #eee;
-}
-
-.job-listing-setup-form {
-  margin-top: 20px;
-}
-
-.form-group {
-  margin-bottom: 25px;
-}
-
-.form-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.form-group .description {
-  margin-top: 8px;
-  color: #666;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* Input styles */
-.regular-text {
-  width: 100%;
-  max-width: 25em;
-}
-
-input[type="text"],
-select {
-  border: 1px solid #8c8f94;
-  border-radius: 4px;
-  padding: 6px 8px;
-  line-height: 1.4;
-}
-
-input[type="text"]:focus,
-select:focus {
-  border-color: #2271b1;
-  box-shadow: 0 0 0 1px #2271b1;
-  outline: 2px solid transparent;
-}
-
-/* Schedule times container */
+/* Schedule Times */
 .schedule-times-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-time-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-time-input input[type="time"] {
+  flex-grow: 1;
+  padding: 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+}
+
+.schedule-time-input .remove-schedule-time {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.schedule-time-input .remove-schedule-time:hover {
+  background-color: #c82333;
+}
+
+#add-schedule-time {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
   margin-top: 10px;
 }
 
-.schedule-time-wrapper {
-  width: 200px;
+#add-schedule-time:hover {
+  background-color: #218838;
 }
 
-.schedule-time-wrapper select {
-  width: 100%;
-}
-
-/* Submit container */
-.submit-container {
-  margin-top: 30px;
-  display: flex;
-  align-items: center;
+/* Database Info Styles */
+.database-info-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 15px;
 }
 
-#setup-response {
-  margin-right: 20px;
-  padding: 10px 15px;
+.database-info-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
   border-radius: 4px;
-  flex-grow: 1;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Message styles */
-.success-message {
-  background-color: #ecf7ed;
-  color: #00844a;
+.database-info-card h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 10px;
+}
+
+/* Action Buttons */
+.job-listing-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.job-listing-actions .button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.job-listing-actions .button-primary {
+  background-color: #007bff;
+  color: white;
+  border: none;
+}
+
+.job-listing-actions .button-primary:hover {
+  background-color: #0056b3;
+}
+
+.job-listing-actions .button-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.job-listing-actions .button-secondary:hover {
+  background-color: #545b62;
+}
+
+/* Last Fetch Information */
+.last-fetch-info {
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.last-fetch-info p {
+  margin: 10px 0;
+}
+
+.last-fetch-info .fetch-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 3px;
+}
+
+.last-fetch-status-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.last-fetch-status-error {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .setup-form-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Error and Success Messages */
+.job-listing-message {
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+}
+
+.job-listing-message-success {
+  background-color: #d4edda;
+  color: #155724;
   border: 1px solid #c3e6cb;
 }
 
-.error-message {
-  background-color: #fcf0f1;
-  color: #b32d2e;
+.job-listing-message-error {
+  background-color: #f8d7da;
+  color: #721c24;
   border: 1px solid #f5c6cb;
-}
-
-.info-message {
-  background-color: #f0f7fc;
-  color: #1e88e5;
-  border: 1px solid #bee5eb;
-}
-
-/* Schedule list */
-.schedule-times-list {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-
-.schedule-times-list li {
-  padding: 8px 0;
-  margin: 0;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-}
-
-.schedule-times-list li:before {
-  content: "⏰";
-  margin-right: 8px;
-  color: #2271b1;
-  font-size: 16px;
-}
-
-.schedule-note {
-  font-style: italic;
-  color: #666;
-  font-size: 13px;
-  margin-top: 15px;
-  padding: 10px;
-  background: #f8f9fa;
-  border-left: 4px solid #2271b1;
-}
-
-/* Responsive styles */
-@media screen and (max-width: 782px) {
-  .schedule-times-container {
-    flex-direction: column;
-  }
-
-  .schedule-time-wrapper {
-    width: 100%;
-  }
-
-  .submit-container {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  #setup-response {
-    margin-right: 0;
-    margin-bottom: 15px;
-  }
-
-  .widefat {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-}
-
-/* Loading states */
-.loading {
-  position: relative;
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.loading:after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid #2271b1;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spinner 0.6s linear infinite;
-}
-
-@keyframes spinner {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Button states */
-.button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-/* Notice styles */
-.notice {
-  margin: 15px 0;
-}
-
-.notice p {
-  margin: 0.5em 0;
-  padding: 2px;
 }
