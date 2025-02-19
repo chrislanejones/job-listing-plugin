@@ -1,63 +1,122 @@
-# Job Listing Plugin
+# Job Listing Plugin for WordPress
 
-A WordPress plugin that integrates Ashby job listings with Elementor page builder.
-It uses the API on this page - https://developers.ashbyhq.com/docs/public-job-posting-api#example
+A comprehensive WordPress plugin that integrates with the Ashby job board API to display current job listings on your website using Elementor.
+
+## Overview
+
+This plugin fetches job listings from Ashby's public job posting API and displays them on your WordPress website. It features:
+
+- Scheduled API data fetching at customizable times
+- Database storage for improved performance
+- Elementor widget for easy display
+- Responsive card-based UI with customizable styling
+- Admin interface for setup and management
 
 ## Requirements
 
-- PHP 7.4 or higher
 - WordPress 5.0 or higher
+- PHP 7.4 or higher
 - Elementor plugin installed and activated
 
 ## Installation
 
-### Option 1: Direct Installation (Recommended)
-
-1. Download the latest release from the releases page
-2. Upload the plugin zip file through WordPress admin > Plugins > Add New > Upload Plugin
-3. Activate the plugin through the 'Plugins' menu in WordPress
-
-### Option 2: Development Installation
-
-1. Clone this repository to your `/wp-content/plugins/` directory
-
-```bash
-cd /path/to/wp-content/plugins/
-git clone https://github.com/yourusername/job-listing-plugin.git
-```
-
+1. Upload the `job-listing-plugin` directory to your `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
+3. Navigate to Settings > Job Listing to complete the initial setup
 
-## Configuration
+## Initial Setup
 
-1. Navigate to Settings > Job Listing in the WordPress admin panel
-2. Enter your API URL (defaults to Ashby API)
-3. Enter your API key if required
-4. Save changes
+The plugin requires configuration before it will fetch or display any job listings:
 
-## Usage with Elementor
+1. Enter your Ashby organization ID (found in your job board URL)
+2. Select up to three daily times when job data should be fetched
+3. Click "Complete Setup" to initialize the scheduler
+
+Once setup is complete, the plugin will automatically fetch job data at your specified times.
+
+## Using the Elementor Widget
+
+After setup, you can use the "Job Listing" widget in Elementor:
 
 1. Edit a page with Elementor
-2. Look for the "Job Listing" widget in the elements panel
+2. Search for "Job Listing" in the elements panel
 3. Drag and drop the widget onto your page
-4. Configure the widget settings:
+4. Configure the display options:
    - Number of jobs to display
-   - Show/hide department
-   - Show/hide location
+   - Show/hide department information
+   - Show/hide location information
    - Customize colors and typography
+
+## Technical Details
+
+This plugin uses the [Ashby public job posting API](https://developers.ashbyhq.com/docs/public-job-posting-api#example) to retrieve job listings. The API endpoint used is:
+
+```
+https://api.ashbyhq.com/posting-api/job-board/{YOUR_ORG_ID}
+```
+
+The response includes all published job postings with their details, including:
+
+- Title
+- Department
+- Team
+- Location
+- Remote status
+- Application URL
+
+## Features
+
+### Admin Interface
+
+- Setup wizard for initial configuration
+- Schedule management for API fetching
+- Manual refresh option for immediate updates
+- Database statistics view
+
+### Data Management
+
+- Local database storage for performance
+- Automatic synchronization at scheduled times
+- Intelligent change detection
+- Clean removal of deleted jobs
+
+### Frontend Display
+
+- Responsive card-based layout
+- Customizable styling via Elementor
+- Support for remote job indicators
+- Clear, accessible design
+
+## Customization
+
+The widget appearance can be customized through:
+
+1. Elementor's built-in style controls
+2. Additional CSS in your theme
+3. The plugin's CSS files
 
 ## Troubleshooting
 
-### Common Issues
+If jobs are not displaying:
 
-2. **Elementor Not Found**: The plugin requires Elementor to be installed and activated.
+1. Check that you've completed the initial setup
+2. Verify your Ashby organization ID is correct
+3. Use the "Fetch Jobs Now" button in the admin panel
+4. Check the Database tab to confirm jobs are being stored
 
-3. **PHP Version Error**: Make sure your server is running PHP 7.4 or higher.
+## Extending the Plugin
 
-## Support
+Developers can extend the plugin by:
 
-For support or feature requests, please create an issue on the plugin's repository.
+- Adding custom filters for job data
+- Creating templates for alternative display options
+- Integrating with job application tracking
+- Adding support for additional job board APIs
+
+## Credits
+
+This plugin was developed using the Ashby API documentation and WordPress best practices.
 
 ## License
 
-GPL v2 or later
+MIT License

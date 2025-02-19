@@ -5,7 +5,6 @@ class Job_Listing_Plugin {
     private $db_table;
     
     const SCHEDULE_HOOK = 'job_listing_api_fetch';
-    const SCHEDULE_RECURRENCE = 'job_listing_thrice_daily';
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -26,29 +25,51 @@ class Job_Listing_Plugin {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('rest_api_init', [$this, 'register_rest_route']);
         
-        // Schedule API fetch if not already scheduled
+        // Schedule API fetch hook
         add_action(self::SCHEDULE_HOOK, [$this, 'fetch_and_store_jobs']);
+    }
+
+    public function activate_scheduler($schedule_times) {
+        // Clear any existing schedules
+        $this->deactivate_scheduler();
         
-        // Register custom cron schedule
-        add_filter('cron_schedules', [$this, 'add_cron_schedules']);
-    }
-
-    public function add_cron_schedules($schedules) {
-        $schedules[self::SCHEDULE_RECURRENCE] = [
-            'interval' => 8 * HOUR_IN_SECONDS, // 8 hours (3 times per day)
-            'display'  => __('Three times daily')
-        ];
-        return $schedules;
-    }
-
-    public function activate_scheduler() {
-        if (!wp_next_scheduled(self::SCHEDULE_HOOK)) {
-            wp_schedule_event(time(), self::SCHEDULE_RECURRENCE, self::SCHEDULE_HOOK);
+        if (empty($schedule_times) || !is_array($schedule_times) || count($schedule_times) < 1) {
+            return false;
         }
+        
+        // Get current time
+        $current_time = current_time('timestamp');
+        $current_day_start = strtotime('today', $current_time);
+        
+        foreach ($schedule_times as $time) {
+            // Parse hour and minute from time string (format: HH:MM)
+            list($hour, $minute) = explode(':', $time);
+            
+            // Create timestamp for this schedule time today
+            $schedule_time = $current_day_start + ($hour * HOUR_IN_SECONDS) + ($minute * MINUTE_IN_SECONDS);
+            
+            // If this time has already passed today, schedule for tomorrow
+            if ($schedule_time <= $current_time) {
+                $schedule_time += DAY_IN_SECONDS;
+            }
+            
+            // Schedule the event to occur at this specific time daily
+            wp_schedule_event($schedule_time, 'daily', self::SCHEDULE_HOOK);
+        }
+        
+        return true;
     }
 
     public function deactivate_scheduler() {
-        wp_clear_scheduled_hook(self::SCHEDULE_HOOK);
+        // Get all scheduled times for our hook
+        $timestamps = wp_get_scheduled_events(self::SCHEDULE_HOOK);
+        
+        // Clear each scheduled event
+        if (!empty($timestamps)) {
+            foreach ($timestamps as $timestamp) {
+                wp_unschedule_event($timestamp, self::SCHEDULE_HOOK);
+            }
+        }
     }
 
     public function create_db_table() {
@@ -318,7 +339,7 @@ class Job_Listing_Plugin {
             );
         }
         
-        $this->activate_scheduler();
+        $this->activate_scheduler($this->options['schedule_times'] ?? []);
         
         // Also trigger an immediate data fetch
         $result = $this->fetch_and_store_jobs();
@@ -398,12 +419,63 @@ class Job_Listing_Plugin {
     
     public function get_last_fetch_info() {
         $last_fetch = get_option('job_listing_last_fetch', null);
-        $next_scheduled = wp_next_scheduled(self::SCHEDULE_HOOK);
+        
+        // Get all scheduled times for our hook
+        $scheduled_times = [];
+        $timestamps = wp_get_scheduled_events(self::SCHEDULE_HOOK);
+        
+        if (!empty($timestamps)) {
+            foreach ($timestamps as $timestamp) {
+                $scheduled_times[] = date('Y-m-d H:i:s', $timestamp);
+            }
+            sort($scheduled_times);
+        }
         
         return [
             'last_fetch' => $last_fetch ? $last_fetch['time'] : null,
-            'next_scheduled' => $next_scheduled ? date('Y-m-d H:i:s', $next_scheduled) : null,
-            'schedule_frequency' => self::SCHEDULE_RECURRENCE
+            'scheduled_times' => $scheduled_times,
+            'setup_complete' => !empty($this->options['setup_complete']),
+            'organization_id' => $this->options['organization_id'] ?? ''
+        ];
+    }
+    
+    // New method to save setup and initialize scheduling
+    public function save_setup($organization_id, $schedule_times) {
+        if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
+            return new WP_Error(
+                'invalid_setup',
+                'Organization ID and at least one schedule time are required',
+                ['status' => 400]
+            );
+        }
+        
+        // Update options
+        $this->options['organization_id'] = sanitize_text_field($organization_id);
+        $this->options['schedule_times'] = array_map('sanitize_text_field', $schedule_times);
+        $this->options['setup_complete'] = true;
+        
+        update_option('job_listing_settings', $this->options);
+        
+        // Activate scheduler with new times
+        $scheduling_result = $this->activate_scheduler($schedule_times);
+        
+        if (!$scheduling_result) {
+            return new WP_Error(
+                'scheduling_error',
+                'Failed to schedule jobs with provided times',
+                ['status' => 500]
+            );
+        }
+        
+        // Fetch initial data
+        $fetch_result = $this->fetch_and_store_jobs();
+        
+        return [
+            'success' => true,
+            'organization_id' => $organization_id,
+            'schedule_times' => $schedule_times,
+            'fetch_result' => $fetch_result,
+            'scheduled_events' => wp_get_scheduled_events(self::SCHEDULE_HOOK)
         ];
     }
 }

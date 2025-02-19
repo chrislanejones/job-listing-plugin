@@ -1,5 +1,4 @@
-/* Admin Page */
-
+/* General styles */
 .schedule-info-wrapper {
   margin: 20px 0;
 }
@@ -8,11 +7,11 @@
   margin-bottom: 20px;
 }
 
-.schedule-info-wrapper ul {
-  list-style-type: disc;
-  margin-left: 20px;
+.job-listing-database-info {
+  margin-top: 20px;
 }
 
+/* Status messages */
 #refresh-status {
   margin-left: 10px;
   padding: 5px 10px;
@@ -35,6 +34,100 @@
   color: #b32d2e;
 }
 
-.job-listing-database-info {
-  margin-top: 40px;
+/* Tab navigation */
+.nav-tab-wrapper {
+  margin-bottom: 20px;
+}
+
+/* Setup form styles */
+.setup-wizard-container {
+  max-width: 800px;
+  margin: 20px 0;
+  background: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.job-listing-setup-form {
+  margin-top: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.schedule-times-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.schedule-time-wrapper {
+  width: 200px;
+}
+
+.schedule-time-wrapper select {
+  width: 100%;
+}
+
+.submit-container {
+  margin-top: 30px;
+  display: flex;
+  align-items: center;
+}
+
+#setup-response {
+  margin-right: 20px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  flex-grow: 1;
+}
+
+.success-message {
+  background-color: #ecf7ed;
+  color: #00844a;
+}
+
+.error-message {
+  background-color: #fcf0f1;
+  color: #b32d2e;
+}
+
+.info-message {
+  background-color: #f0f7fc;
+  color: #1e88e5;
+}
+
+/* Schedule list */
+.schedule-times-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.schedule-times-list li {
+  padding: 5px 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.schedule-times-list li:before {
+  content: "⏰";
+  margin-right: 8px;
+  color: #2271b1;
+}
+
+.schedule-note {
+  font-style: italic;
+  color: #666;
+  font-size: 0.9em;
+  margin-top: 15px;
 }
