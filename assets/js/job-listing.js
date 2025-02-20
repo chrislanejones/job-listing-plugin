@@ -115,7 +115,6 @@ class JobListing {
           </div>
           <div class="job-details">`;
 
-    // // Don't show department as it's now a header
     // if (job.team) {
     //   jobHtml += `
     //     <div class="job-detail">
@@ -144,10 +143,10 @@ class JobListing {
     jobHtml += `
       <div class="job-detail">
         <i class="fas fa-laptop-house"></i>
-        Remote: <span class="remote-status ${
+        <span class="remote-status ${
           job.isRemote ? "is-remote" : "not-remote"
         }">
-          ${job.isRemote ? "Yes" : "No"}
+          ${job.isRemote ? "Yes" : "On Site"}
         </span>
       </div>`;
 
