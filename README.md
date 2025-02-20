@@ -1,3 +1,5 @@
+![Image showing screenshots of plugin](Job-Listing-WordPress.png)
+
 # Job Listing Plugin for WordPress
 
 A comprehensive WordPress plugin that integrates with the Ashby job board API to display current job listings on your website using Elementor.
