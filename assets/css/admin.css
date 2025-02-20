@@ -225,3 +225,61 @@
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
+
+.schedule-hours-selector {
+  margin: 15px 0;
+}
+
+.hour-buttons {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px;
+}
+
+@media screen and (max-width: 782px) {
+  .hour-buttons {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .hour-buttons {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.hour-button {
+  padding: 8px;
+  background: #f1f1f1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: normal;
+  transition: all 0.2s ease;
+}
+
+.hour-button:hover:not(.selected) {
+  background: #e0e0e0;
+}
+
+.hour-button.selected {
+  background: #2271b1;
+  color: white;
+  border-color: #135e96;
+  font-weight: 500;
+}
+
+.selected-hours-container {
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.schedule-error {
+  color: #b32d2e;
+  margin-top: 5px;
+  font-weight: 500;
+}

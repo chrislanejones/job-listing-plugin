@@ -111,10 +111,13 @@ class JobListing {
     }
 
     if (job.employmentType) {
+      const employmentType = job.employmentType
+        .replace(/([A-Z])/g, " $1")
+        .trim();
       jobHtml += `
                 <div class="job-detail">
                     <i class="fas fa-clock"></i>
-                    ${this.escapeHtml(job.employmentType)}
+                    ${this.escapeHtml(employmentType)}
                 </div>`;
     }
 
@@ -125,7 +128,7 @@ class JobListing {
                 Remote: <span class="remote-status ${
                   job.isRemote ? "is-remote" : "not-remote"
                 }">
-                    ${job.isRemote ? "Yes" : "No"}
+                    ${job.isRemote ? "Yes" : "On Site"}
                 </span>
             </div>`;
 
