@@ -6,6 +6,42 @@
   --alembic-border: #e5e7eb;
 }
 
+/* Department Title */
+.department-section {
+  margin-bottom: 40px;
+}
+
+.department-heading {
+  font-size: 1.8rem;
+  color: var(--alembic-dark);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--alembic-primary);
+}
+
+.department-jobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .department-jobs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* You may need to adjust these styles to fit your existing styles */
+.job-item {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.job-content {
+  flex: 1;
+}
+
 .job-listing-container {
   max-width: 1200px;
   margin: 0 auto;

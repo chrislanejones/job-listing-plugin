@@ -412,7 +412,7 @@ class Job_Listing_Plugin {
                 is_remote as isRemote,
                 application_url as applicationUrl
             FROM {$this->db_table}
-            ORDER BY title ASC",
+            ORDER BY department ASC, title ASC",
             ARRAY_A
         );
         
