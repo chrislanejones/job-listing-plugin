@@ -3,7 +3,7 @@
  * Plugin Name: Job Listing Plugin
  * Plugin URI: 
  * Description: A comprehensive job listing plugin with Elementor integration
- * Version: 1.3.1
+ * Version: 1.5.0
  * Author: Chris Lane Jones
  * Requires at least: 5.6
  * Requires PHP: 7.4
@@ -17,13 +17,13 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('JobListingPlugin\JLP_VERSION', '1.3.1');
-define('JobListingPlugin\JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('JobListingPlugin\JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('JobListingPlugin\JLP_PLUGIN_BASENAME', plugin_basename(__FILE__));
-define('JobListingPlugin\JLP_MINIMUM_PHP_VERSION', '7.4');
+define('JLP_VERSION', '1.5.0');
+define('JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('JLP_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('JLP_MINIMUM_PHP_VERSION', '7.4');
 
-// Explicitly require necessary files
+// Include required files BEFORE using their classes
 require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-plugin.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-admin.php';
 

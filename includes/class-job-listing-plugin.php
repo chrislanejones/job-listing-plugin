@@ -439,15 +439,6 @@ class Job_Listing_Plugin {
         ];
     }
     
-    public function save_setup($organization_id, $schedule_times) {
-        if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
-            return new \WP_Error(
-                'invalid_setup',
-                'Organization ID and at least one schedule time are required',
-                ['status' => 400]
-            );
-        }
-
         public function save_setup($organization_id, $schedule_times) {
             if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
                 return new \WP_Error(
