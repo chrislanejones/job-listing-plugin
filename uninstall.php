@@ -4,6 +4,13 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
+// We need to access non-namespaced WordPress functions
+use function \wp_clear_scheduled_hook;
+use function \delete_option;
+use function \delete_site_option;
+use function \delete_transient;
+use function \current_user_can;
+
 // Check user capabilities
 if (!current_user_can('activate_plugins')) {
     return;
@@ -35,13 +42,21 @@ $wpdb->query(
 );
 
 // Remove all scheduled events for this plugin
-$next_scheduled = wp_next_scheduled('job_listing_api_fetch');
-if ($next_scheduled) {
-    wp_unschedule_event($next_scheduled, 'job_listing_api_fetch');
+$crons = _get_cron_array();
+if (!empty($crons)) {
+    foreach ($crons as $timestamp => $cron) {
+        if (isset($cron[$hook_name])) {
+            unset($crons[$timestamp][$hook_name]);
+            if (empty($crons[$timestamp])) {
+                unset($crons[$timestamp]);
+            }
+        }
+    }
+    _set_cron_array($crons);
 }
 
 // Clear any remaining cron jobs
-wp_clear_scheduled_hook('job_listing_api_fetch');
+wp_clear_scheduled_hook($hook_name);
 
 // Drop custom database tables if they exist
 if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name)) === $table_name) {

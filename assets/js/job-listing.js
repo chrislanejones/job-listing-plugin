@@ -61,21 +61,6 @@ class JobListing {
       return;
     }
 
-    // Track job titles for duplicates
-    const titleCount = {};
-    jobs.forEach((job) => {
-      titleCount[job.title] = (titleCount[job.title] || 0) + 1;
-    });
-
-    // Modify job titles that appear multiple times
-    jobs = jobs.map((job) => ({
-      ...job,
-      title:
-        titleCount[job.title] > 1
-          ? `${job.title} (Multiple Positions)`
-          : job.title,
-    }));
-
     // Group jobs by department
     const jobsByDepartment = {};
     jobs.forEach((job) => {
@@ -97,9 +82,9 @@ class JobListing {
       const departmentSection = document.createElement("div");
       departmentSection.className = "department-section";
       departmentSection.innerHTML = `
-            <h2 class="department-heading">${this.escapeHtml(department)}</h2>
-            <div class="department-jobs"></div>
-        `;
+        <h2 class="department-heading">${this.escapeHtml(department)}</h2>
+        <div class="department-jobs"></div>
+      `;
 
       const jobsContainer = departmentSection.querySelector(".department-jobs");
 

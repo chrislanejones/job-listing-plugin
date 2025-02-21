@@ -82,8 +82,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (selectedHours.length !== 5) {
       e.preventDefault();
       scheduleError.textContent = "Please select exactly 5 hours";
-      scheduleError.scrollIntoView({ behavior: "smooth" });
+      scheduleError.scrollIntoView({
+        behavior: "smooth",
+      });
+      return;
     }
+
+    // If validation passes, handle form submission
+    e.preventDefault();
+    saveSetup();
   });
 
   // Handle save settings
@@ -121,8 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((response) => response.json())
       .then((data) => {
         if (data.success) {
-          statusElement.textContent = "Settings saved successfully!";
-          statusElement.className = "status-success";
+          showMessage("Settings saved successfully!", "success");
           setTimeout(() => {
             location.reload();
           }, 1000);
@@ -131,8 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       })
       .catch((error) => {
-        statusElement.textContent = `Error: ${error.message}`;
-        statusElement.className = "status-error";
+        showMessage(`Error: ${error.message}`, "error");
         console.error("Save failed:", error);
       })
       .finally(() => {
@@ -168,10 +173,10 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((response) => response.json())
         .then((data) => {
           if (data.success) {
-            statusElement.textContent = `Success! ${
-              data.data ? data.data.message || "" : ""
-            }`;
-            statusElement.className = "status-success";
+            showMessage(
+              `Success! ${data.data ? data.data.message || "" : ""}`,
+              "success"
+            );
 
             // Update last fetch time
             const lastFetchElement = document.querySelector(
@@ -187,8 +192,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         })
         .catch((error) => {
-          statusElement.textContent = `Failed: ${error.message}`;
-          statusElement.className = "status-error";
+          showMessage(`Failed: ${error.message}`, "error");
           console.error("Refresh failed:", error);
         })
         .finally(() => {
@@ -202,5 +206,29 @@ document.addEventListener("DOMContentLoaded", function () {
           }, 10000);
         });
     });
+  }
+
+  // Function to show messages at the top of the admin page
+  function showMessage(message, type = "success") {
+    const messagesContainer = document.getElementById(
+      "job-listing-admin-messages"
+    );
+    if (!messagesContainer) return;
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `notice notice-${type} is-dismissible`;
+    messageDiv.innerHTML = `<p>${message}</p>
+                              <button type="button" class="notice-dismiss">
+                                  <span class="screen-reader-text">Dismiss this notice.</span>
+                              </button>`;
+
+    // Add dismiss functionality
+    messageDiv
+      .querySelector(".notice-dismiss")
+      .addEventListener("click", function () {
+        messageDiv.remove();
+      });
+
+    messagesContainer.appendChild(messageDiv);
   }
 });
