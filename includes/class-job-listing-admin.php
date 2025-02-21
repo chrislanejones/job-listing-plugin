@@ -1,13 +1,9 @@
 <?php
 namespace JobListingPlugin;
 
-class Job_Listing_Plugin {
+class Job_Listing_Admin {
     private static $instance = null;
-    private $options;
-    private $db_table;
-    
-    const SCHEDULE_HOOK = 'job_listing_api_fetch';
-    const SCHEDULE_RECURRENCE = 'five_times_daily';
+    private $plugin;
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -16,185 +12,257 @@ class Job_Listing_Plugin {
         return self::$instance;
     }
 
-    public function __construct() {
-        global $wpdb;
-        $this->db_table = $wpdb->prefix . 'job_listings';
+    private function __construct() {
+        $this->plugin = Job_Listing_Plugin::get_instance();
     }
 
     public function init() {
-        $this->options = get_option('job_listing_settings');
+        // Admin menu and page setup
+        add_action('admin_menu', [$this, 'add_admin_menu']);
         
-        add_action('elementor/widgets/widgets_registered', [$this, 'register_widgets']);
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
-        add_action('rest_api_init', [$this, 'register_rest_route']);
+        // Admin scripts and styles
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         
-        // Add this line
-        add_filter('cron_schedules', [$this, 'add_cron_schedules']);
-        
-        // Schedule API fetch hook
-        add_action(self::SCHEDULE_HOOK, [$this, 'fetch_and_store_jobs']);
+        // Admin AJAX actions
+        add_action('wp_ajax_job_listing_save_setup', [$this, 'save_setup_ajax']);
+        add_action('wp_ajax_job_listing_refresh_jobs', [$this, 'refresh_jobs_ajax']);
     }
 
-    public function add_cron_schedules($schedules) {
-        $schedules['five_times_daily'] = [
-            'interval' => 17280, // 24 hours / 5 = 4.8 hours or 17280 seconds
-            'display'  => __('Five times daily')
-        ];
-        return $schedules;
-    }
-
-    public function register_widgets() {
-        // Ensure Elementor is loaded
-        if (!did_action('elementor/loaded')) {
-            return;
-        }
-
-        // Include the widget file
-        require_once(JLP_PLUGIN_DIR . 'includes/widgets/class-job-listing-widget.php');
-
-        // Register the widget
-        \Elementor\Plugin::instance()->widgets_manager->register_widget_type(
-            new \JobListingPlugin\Job_Listing_Widget()
+    public function add_admin_menu() {
+        add_options_page(
+            'Job Listing Settings',
+            'Job Listing',
+            'manage_options',
+            'job-listing-settings',
+            [$this, 'render_admin_page']
         );
     }
 
-    public function enqueue_scripts() {
+    public function render_admin_page() {
+        // Get last fetch info
+        $last_fetch_info = $this->plugin->get_last_fetch_info();
+
+        // Get WordPress timezone
+        $timezone = wp_timezone();
+        $timezone_string = $timezone->getName();
+
+        ?>
+        <div class="wrap">
+            <h1>Job Listing Settings</h1>
+            <div class="job-listing-setup">
+                <form id="job-listing-setup-form">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="organization-id">Organization ID</label>
+                            </th>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    id="organization-id" 
+                                    name="organization_id" 
+                                    value="<?php echo esc_attr($last_fetch_info['organization_id'] ?? ''); ?>" 
+                                    class="regular-text"
+                                    placeholder="Enter Ashby Organization ID"
+                                >
+                                <p class="description">
+                                    Enter your Ashby organization ID. You can find this in your Ashby job board URL.
+                                    For example, if your job board URL is "jobs.ashbyhq.com/your-company", your organization ID is "your-company".
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="schedule-info-wrapper">
+                        <h2>API Fetch Schedule</h2>
+                        <p>Jobs are fetched five times daily from the Ashby API.</p>
+
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th>Last Fetch</th>
+                                    <th>Next Scheduled Fetch</th>
+                                    <th>Frequency</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="last-fetch-time">
+                                        <?php 
+                                        if ($last_fetch_info['last_fetch']) {
+                                            $date = new \DateTime($last_fetch_info['last_fetch'], $timezone);
+                                            echo $date->format('Y-m-d g:i A');
+                                        } else {
+                                            echo 'Never';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                        if (!empty($last_fetch_info['scheduled_times'])) {
+                                            foreach ($last_fetch_info['scheduled_times'] as $index => $time) {
+                                                $date = new \DateTime($time, $timezone);
+                                                echo $date->format('g:i A');
+                                                if ($index < count($last_fetch_info['scheduled_times']) - 1) {
+                                                    echo ', ';
+                                                }
+                                            }
+                                        } else {
+                                            echo 'Not scheduled';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        Five times daily<br>
+                                        <small>(Every 4.8 hours)</small>
+                                    </td>
+                                    <td>
+                                        <button type="button" id="refresh-jobs" class="button button-secondary">
+                                            Fetch Jobs Now
+                                        </button>
+                                        <span id="refresh-status"></span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="timezone-info">
+                            <p>
+                                <strong>Current Server Time Zone:</strong> <?php echo esc_html($timezone_string); ?><br>
+                                <strong>Current Server Time:</strong> <?php echo current_time('Y-m-d g:i A'); ?>
+                            </p>
+                        </div>
+
+                        <p class="submit">
+                            <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings">
+                        </p>
+                    </div>
+                    <div class="database-info-wrapper">
+    <h2>Database Information</h2>
+    <?php $this->render_database_info(); ?>
+</div>
+                </form>
+            </div>
+        </div>
+        <?php
+    }
+
+    private function render_database_info() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'job_listings';
+        $job_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+        $last_updated = $wpdb->get_var("SELECT MAX(date_updated) FROM $table_name");
+        
+        ?>
+        <table class="widefat">
+            <thead>
+                <tr>
+                    <th>Total Jobs in Database</th>
+                    <th>Database Table Name</th>
+                    <th>Last Updated</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><?php echo intval($job_count); ?></td>
+                    <td><?php echo esc_html($table_name); ?></td>
+                    <td>
+                        <?php 
+                        if ($last_updated) {
+                            $date = new \DateTime($last_updated, wp_timezone());
+                            echo $date->format('Y-m-d g:i A');
+                        } else {
+                            echo 'Never';
+                        }
+                        ?>
+                    </td>
+                    <td>
+                        <?php 
+                        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name)) === $table_name) {
+                            echo '<span class="status-success">Active</span>';
+                        } else {
+                            echo '<span class="status-error">Table Missing</span>';
+                        }
+                        ?>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <?php
+    }
+
+    public function enqueue_admin_scripts($hook) {
+        // Only enqueue on our plugin page
+        if ('settings_page_job-listing-settings' !== $hook) {
+            return;
+        }
+
         wp_enqueue_style(
-            'job-listing-style',
-            JLP_PLUGIN_URL . 'assets/css/job-listing.css',
+            'job-listing-admin',
+            JLP_PLUGIN_URL . 'admin/css/admin.css',
             [],
             JLP_VERSION
         );
 
         wp_enqueue_script(
-            'job-listing-script',
-            JLP_PLUGIN_URL . 'assets/js/job-listing.js',
-            [], // No jQuery dependency
+            'job-listing-admin',
+            JLP_PLUGIN_URL . 'admin/js/admin.js',
+            [],
             JLP_VERSION,
             true
         );
 
-        wp_enqueue_style(
-            'font-awesome',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-            [],
-            '5.15.4'
-        );
-
-        wp_localize_script('job-listing-script', 'jobListingData', [
-            'ajaxUrl' => rest_url('job-listing/v1/list'),
-            'nonce' => wp_create_nonce('wp_rest')
+        wp_localize_script('job-listing-admin', 'jobListingAdmin', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('job_listing_admin_nonce')
         ]);
     }
 
-    public function register_rest_route() {
-        register_rest_route('job-listing/v1', '/list', [
-            'methods' => 'GET',
-            'callback' => [$this, 'get_jobs_list'],
-            'permission_callback' => '__return_true'
-        ]);
-        
-        register_rest_route('job-listing/v1', '/refresh', [
-            'methods' => 'GET',
-            'callback' => [$this, 'refresh_jobs_data'],
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
-            }
-        ]);
-        
-        // New endpoint for initializing schedule
-        register_rest_route('job-listing/v1', '/initialize-schedule', [
-            'methods' => 'GET',
-            'callback' => [$this, 'initialize_schedule'],
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
-            }
-        ]);
-    }
-    
-    public function initialize_schedule() {
+    public function save_setup_ajax() {
+        // Verify nonce
+        check_ajax_referer('job_listing_admin_nonce', 'nonce');
+
+        // Check user capabilities
         if (!current_user_can('manage_options')) {
-            return new \WP_Error(
-                'rest_forbidden',
-                'Sorry, you are not allowed to do that.',
-                ['status' => 401]
-            );
+            wp_send_json_error('Insufficient permissions', 403);
         }
-        
-        $this->activate_scheduler($this->options['schedule_times'] ?? []);
-        
-        // Also trigger an immediate data fetch
-        $result = $this->fetch_and_store_jobs();
-        
-        return new \WP_REST_Response([
-            'success' => true,
-            'message' => 'Schedule initialized successfully.',
-            'next_scheduled' => wp_next_scheduled(self::SCHEDULE_HOOK) 
-                ? date('Y-m-d H:i:s', wp_next_scheduled(self::SCHEDULE_HOOK)) 
-                : null
-        ], 200);
+
+        // Sanitize and validate inputs
+        $organization_id = sanitize_text_field($_POST['organization_id'] ?? '');
+        $schedule_times = array_map('sanitize_text_field', $_POST['schedule_times'] ?? []);
+
+        // Remove empty schedule times
+        $schedule_times = array_filter($schedule_times);
+
+        // Save setup
+        $result = $this->plugin->save_setup($organization_id, $schedule_times);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message(), 400);
+        }
+
+        wp_send_json_success($result);
     }
-    
-    public function refresh_jobs_data() {
+
+    public function refresh_jobs_ajax() {
+        // Verify nonce
+        check_ajax_referer('job_listing_admin_nonce', 'nonce');
+
+        // Check user capabilities
         if (!current_user_can('manage_options')) {
-            return new \WP_Error(
-                'rest_forbidden',
-                'Sorry, you are not allowed to do that.',
-                ['status' => 401]
-            );
+            wp_send_json_error('Insufficient permissions', 403);
         }
-        
-        $result = $this->fetch_and_store_jobs();
-        
-        if ($result === false) {
-            return new \WP_Error(
-                'api_error',
-                'Failed to fetch or store jobs',
-                ['status' => 500]
-            );
-        }
-        
-        return new \WP_REST_Response([
-            'success' => true,
-            'message' => sprintf(
-                'Successfully refreshed jobs data. Added: %d, Updated: %d, Removed: %d',
-                $result['added'],
-                $result['updated'],
-                $result['removed']
-            ),
-            'data' => $result
-        ], 200);
-    }
 
-    public function get_jobs_list() {
-        try {
-            $jobs = $this->get_jobs_from_db();
-            
-            if (empty($jobs)) {
-                // Try to fetch from API if no jobs in DB
-                $api_result = $this->fetch_and_store_jobs();
-                if ($api_result !== false) {
-                    $jobs = $this->get_jobs_from_db();
-                }
-                
-                if (empty($jobs)) {
-                    return new \WP_Error(
-                        'no_jobs',
-                        'No jobs found',
-                        ['status' => 404]
-                    );
-                }
-            }
-            
-            return new \WP_REST_Response([
-                'jobs' => $jobs
-            ], 200);
+        // Trigger job refresh
+        $result = $this->plugin->refresh_jobs_data();
 
-        } catch (\Exception $e) {
-            return new \WP_Error(
-                'db_error',
-                'Unexpected error: ' . $e->getMessage(),
-                ['status' => 500]
-            );
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message(), 400);
         }
+
+        wp_send_json_success($result);
     }
+}
