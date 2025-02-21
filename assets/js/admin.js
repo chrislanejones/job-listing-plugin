@@ -39,8 +39,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Validate
-    if (selectedHours.length < 3) {
-      scheduleError.textContent = "Please select exactly 3 hours";
+    if (selectedHours.length < 5) {
+      scheduleError.textContent = "Please select exactly 5 hours";
       return false;
     } else {
       scheduleError.textContent = "";
@@ -57,9 +57,9 @@ document.addEventListener("DOMContentLoaded", function () {
         this.classList.remove("selected");
         selectedHours = selectedHours.filter((h) => h !== hour);
       } else {
-        // Select
-        if (selectedHours.length >= 3) {
-          // If we already have 3 selected, remove the first one
+        // Select (only if we haven't reached 5 yet)
+        if (selectedHours.length >= 5) {
+          // If we already have 5 selected, remove the first one
           const oldestHour = selectedHours.shift();
           document
             .querySelector(`.hour-button[data-hour="${oldestHour}"]`)
@@ -79,16 +79,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Form submission validation
   form.addEventListener("submit", function (e) {
-    if (selectedHours.length !== 3) {
+    if (selectedHours.length !== 5) {
       e.preventDefault();
-      scheduleError.textContent = "Please select exactly 3 hours";
+      scheduleError.textContent = "Please select exactly 5 hours";
       scheduleError.scrollIntoView({ behavior: "smooth" });
-      return;
     }
-
-    // If validation passes, handle form submission
-    e.preventDefault();
-    saveSetup();
   });
 
   // Handle save settings

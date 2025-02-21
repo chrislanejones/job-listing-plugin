@@ -7,6 +7,7 @@ class Job_Listing_Plugin {
     private $db_table;
     
     const SCHEDULE_HOOK = 'job_listing_api_fetch';
+    const SCHEDULE_RECURRENCE = 'five_times_daily';
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -20,27 +21,6 @@ class Job_Listing_Plugin {
         $this->db_table = $wpdb->prefix . 'job_listings';
     }
 
-    /**
-     * Get all scheduled events for a specific hook
-     * 
-     * @param string $hook The hook name to look for
-     * @return array Timestamps of scheduled events
-     */
-    private function get_scheduled_events($hook) {
-        $crons = _get_cron_array();
-        $events = [];
-        
-        if (!empty($crons)) {
-            foreach ($crons as $timestamp => $cron) {
-                if (isset($cron[$hook])) {
-                    $events[] = $timestamp;
-                }
-            }
-        }
-        
-        return $events;
-    }
-
     public function init() {
         $this->options = get_option('job_listing_settings');
         
@@ -48,8 +28,19 @@ class Job_Listing_Plugin {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('rest_api_init', [$this, 'register_rest_route']);
         
+        // Add this line
+        add_filter('cron_schedules', [$this, 'add_cron_schedules']);
+        
         // Schedule API fetch hook
         add_action(self::SCHEDULE_HOOK, [$this, 'fetch_and_store_jobs']);
+    }
+
+    public function add_cron_schedules($schedules) {
+        $schedules['five_times_daily'] = [
+            'interval' => 17280, // 24 hours / 5 = 4.8 hours or 17280 seconds
+            'display'  => __('Five times daily')
+        ];
+        return $schedules;
     }
 
     public function register_widgets() {
@@ -233,20 +224,20 @@ class Job_Listing_Plugin {
             }
             
             // Schedule the event to occur at this specific time daily
-            wp_schedule_event($schedule_time, 'daily', self::SCHEDULE_HOOK);
+            wp_schedule_event($schedule_time, self::SCHEDULE_RECURRENCE, self::SCHEDULE_HOOK);
         }
         
         return true;
     }
 
     public function deactivate_scheduler() {
-        // Get all scheduled times for our hook
-        $timestamps = $this->get_scheduled_events(self::SCHEDULE_HOOK);
+        $crons = _get_cron_array();
         
-        // Clear each scheduled event
-        if (!empty($timestamps)) {
-            foreach ($timestamps as $timestamp) {
-                wp_unschedule_event($timestamp, self::SCHEDULE_HOOK);
+        if (!empty($crons)) {
+            foreach ($crons as $timestamp => $cron) {
+                if (isset($cron[self::SCHEDULE_HOOK])) {
+                    wp_unschedule_event($timestamp, self::SCHEDULE_HOOK);
+                }
             }
         }
     }
@@ -412,7 +403,7 @@ class Job_Listing_Plugin {
                 is_remote as isRemote,
                 application_url as applicationUrl
             FROM {$this->db_table}
-            ORDER BY department ASC, title ASC",
+            ORDER BY title ASC",
             ARRAY_A
         );
         
@@ -429,11 +420,13 @@ class Job_Listing_Plugin {
         
         // Get all scheduled times for our hook
         $scheduled_times = [];
-        $timestamps = $this->get_scheduled_events(self::SCHEDULE_HOOK);
+        $crons = _get_cron_array();
         
-        if (!empty($timestamps)) {
-            foreach ($timestamps as $timestamp) {
-                $scheduled_times[] = date('Y-m-d H:i:s', $timestamp);
+        if (!empty($crons)) {
+            foreach ($crons as $timestamp => $cron) {
+                if (isset($cron[self::SCHEDULE_HOOK])) {
+                    $scheduled_times[] = date('Y-m-d H:i:s', $timestamp);
+                }
             }
             sort($scheduled_times);
         }
@@ -446,7 +439,6 @@ class Job_Listing_Plugin {
         ];
     }
     
-    // New method to save setup and initialize scheduling
     public function save_setup($organization_id, $schedule_times) {
         if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
             return new \WP_Error(
@@ -455,60 +447,69 @@ class Job_Listing_Plugin {
                 ['status' => 400]
             );
         }
-        
-        // Update options
-        $this->options['organization_id'] = sanitize_text_field($organization_id);
-        $this->options['schedule_times'] = array_map('sanitize_text_field', $schedule_times);
-        $this->options['setup_complete'] = true;
-        
-        update_option('job_listing_settings', $this->options);
-        
-        // Activate scheduler with new times
-        $scheduling_result = $this->activate_scheduler($schedule_times);
-        
-        if (!$scheduling_result) {
-            return new \WP_Error(
-                'scheduling_error',
-                'Failed to schedule jobs with provided times',
-                ['status' => 500]
-            );
-        }
-        
-        // Fetch initial data
-        $fetch_result = $this->fetch_and_store_jobs();
-        
-        return [
-            'success' => true,
-            'organization_id' => $organization_id,
-            'schedule_times' => $schedule_times,
-            'fetch_result' => $fetch_result,
-            'scheduled_events' => $this->get_scheduled_events(self::SCHEDULE_HOOK)
-        ];
-    }
 
-    public function create_db_table() {
-        global $wpdb;
-        
-        $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->db_table} (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            job_id varchar(64) NOT NULL,
-            title text NOT NULL,
-            department varchar(255),
-            team varchar(255),
-            employment_type varchar(100),
-            location varchar(255),
-            is_remote tinyint(1) DEFAULT 0,
-            application_url text,
-            date_added datetime DEFAULT CURRENT_TIMESTAMP,
-            date_updated datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            last_fetch_hash varchar(32),
-            PRIMARY KEY  (id),
-            UNIQUE KEY job_id (job_id)
-        ) $charset_collate;";
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
+        public function save_setup($organization_id, $schedule_times) {
+            if (empty($organization_id) || empty($schedule_times) || count($schedule_times) < 1) {
+                return new \WP_Error(
+                    'invalid_setup',
+                    'Organization ID and at least one schedule time are required',
+                    ['status' => 400]
+                );
+            }
+            
+            // Update options
+            $this->options['organization_id'] = sanitize_text_field($organization_id);
+            $this->options['schedule_times'] = array_map('sanitize_text_field', $schedule_times);
+            $this->options['setup_complete'] = true;
+            
+            update_option('job_listing_settings', $this->options);
+            
+            // Activate scheduler with new times
+            $scheduling_result = $this->activate_scheduler($schedule_times);
+            
+            if (!$scheduling_result) {
+                return new \WP_Error(
+                    'scheduling_error',
+                    'Failed to schedule jobs with provided times',
+                    ['status' => 500]
+                );
+            }
+            
+            // Fetch initial data
+            $fetch_result = $this->fetch_and_store_jobs();
+            
+            return [
+                'success' => true,
+                'organization_id' => $organization_id,
+                'schedule_times' => $schedule_times,
+                'fetch_result' => $fetch_result,
+                'scheduled_events' => $this->get_scheduled_events(self::SCHEDULE_HOOK)
+            ];
+        }
+    
+        public function create_db_table() {
+            global $wpdb;
+            
+            $charset_collate = $wpdb->get_charset_collate();
+            
+            $sql = "CREATE TABLE IF NOT EXISTS {$this->db_table} (
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                job_id varchar(64) NOT NULL,
+                title text NOT NULL,
+                department varchar(255),
+                team varchar(255),
+                employment_type varchar(100),
+                location varchar(255),
+                is_remote tinyint(1) DEFAULT 0,
+                application_url text,
+                date_added datetime DEFAULT CURRENT_TIMESTAMP,
+                date_updated datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                last_fetch_hash varchar(32),
+                PRIMARY KEY  (id),
+                UNIQUE KEY job_id (job_id)
+            ) $charset_collate;";
+            
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            dbDelta($sql);
+        }
     }
-}

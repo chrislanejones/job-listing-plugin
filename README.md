@@ -1,4 +1,4 @@
-![Image showing screenshots of plugin](Job-Listing-WordPress.png)
+![Image showing screenshots of plugin](Job-Listing-WordPress.webp)
 
 # Job Listing Plugin for WordPress
 

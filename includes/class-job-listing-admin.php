@@ -29,143 +29,187 @@ class Job_Listing_Admin {
     }
 
     public function add_admin_menu() {
-        add_menu_page(
-            'Job Listings', 
-            'Job Listings', 
-            'manage_options', 
-            'job-listing-plugin', 
-            [$this, 'render_admin_page'], 
-            'dashicons-list-view', 
-            30
+        add_options_page(
+            'Job Listing Settings',
+            'Job Listing',
+            'manage_options',
+            'job-listing-settings',
+            [$this, 'render_admin_page']
         );
     }
 
     public function render_admin_page() {
-    // Get last fetch info
-    $last_fetch_info = $this->plugin->get_last_fetch_info();
-    $schedule_times = [];
-    
-    // Extract hours from scheduled times
-    if (!empty($last_fetch_info['scheduled_times'])) {
-        foreach ($last_fetch_info['scheduled_times'] as $time) {
-            $hour = date('H', strtotime($time));
-            $schedule_times[] = $hour;
-        }
-    }
-    
-    // If we don't have 3 times yet, add defaults
-    if (count($schedule_times) < 3) {
-        $defaults = ['08', '14', '20'];
-        foreach ($defaults as $default) {
-            if (!in_array($default, $schedule_times) && count($schedule_times) < 3) {
-                $schedule_times[] = $default;
-            }
-        }
-    }
-    
-    // Ensure we have exactly 3 times
-    $schedule_times = array_slice($schedule_times, 0, 3);
-    
-    ?>
-    <div class="wrap">
-        <h1>Job Listing Plugin</h1>
-        <div id="job-listing-setup">
-            <form id="job-listing-setup-form">
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="organization-id">Organization ID</label>
-                        </th>
-                        <td>
-                            <input 
-                                type="text" 
-                                id="organization-id" 
-                                name="organization_id" 
-                                value="<?php echo esc_attr($last_fetch_info['organization_id'] ?? ''); ?>" 
-                                class="regular-text"
-                                placeholder="Enter Ashby Organization ID"
-                            >
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label>Fetch Schedule Times</label>
-                        </th>
-                        <td>
-                            <div class="schedule-hours-selector">
-                                <p class="description">Select exactly three hours when jobs should be fetched daily (24-hour format).</p>
-                                <br>
-                            <div class="postbox">    
-                                <div class="hour-buttons">
-                                    <?php for ($i = 0; $i < 24; $i++): 
-                                        $hour = sprintf('%02d', $i);
-                                        $isSelected = in_array($hour, $schedule_times);
-                                    ?>
-                                        <button 
-                                            type="button" 
-                                            class="hour-button <?php echo $isSelected ? 'selected' : ''; ?>"
-                                            data-hour="<?php echo $hour; ?>"
-                                        >
-                                            <?php echo $hour; ?>:00
-                                        </button>
-                                    <?php endfor; ?>
-                                </div>
-                                <div class="selected-hours-container">
-                                <strong>Selected hours:</strong>
-                                    <span id="selected-hours-display">
-                                        <?php echo implode(':00, ', $schedule_times) . ':00'; ?>
-                                    </span>
-                                    <div id="schedule-error" class="schedule-error"></div>
-                                </div>
-                                <?php foreach ($schedule_times as $time): ?>
-                                    <input type="hidden" name="schedule_times[]" value="<?php echo $time; ?>:00" class="selected-hour-input">
-                                <?php endforeach; ?>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-                <p class="submit">
-                    <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings">
-                    <button type="button" id="refresh-jobs" class="button button-secondary">Refresh Jobs</button>
-                </p>
-            </form>
+        // Get last fetch info
+        $last_fetch_info = $this->plugin->get_last_fetch_info();
 
-            <div id="last-fetch-info">
-                <h2>Last Fetch Information</h2>
-                <p>
-                    <strong>Last Fetch:</strong> 
-                    <?php 
-                    echo $last_fetch_info['last_fetch'] 
-                        ? esc_html($last_fetch_info['last_fetch']) 
-                        : 'No fetch performed yet'; 
-                    ?>
-                </p>
-                <p>
-                    <strong>Scheduled Fetch Times:</strong>
-                    <?php 
-                    echo !empty($last_fetch_info['scheduled_times']) 
-                        ? esc_html(implode(', ', array_map(function($time) {
-                            return date('H:i', strtotime($time));
-                          }, $last_fetch_info['scheduled_times'])))
-                        : 'No fetch scheduled'; 
-                    ?>
-                </p>
+        // Get WordPress timezone
+        $timezone = wp_timezone();
+        $timezone_string = $timezone->getName();
+
+        ?>
+        <div class="wrap">
+            <h1>Job Listing Settings</h1>
+            <div class="job-listing-setup">
+                <form id="job-listing-setup-form">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="organization-id">Organization ID</label>
+                            </th>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    id="organization-id" 
+                                    name="organization_id" 
+                                    value="<?php echo esc_attr($last_fetch_info['organization_id'] ?? ''); ?>" 
+                                    class="regular-text"
+                                    placeholder="Enter Ashby Organization ID"
+                                >
+                                <p class="description">
+                                    Enter your Ashby organization ID. You can find this in your Ashby job board URL.
+                                    For example, if your job board URL is "jobs.ashbyhq.com/your-company", your organization ID is "your-company".
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="schedule-info-wrapper">
+                        <h2>API Fetch Schedule</h2>
+                        <p>Jobs are fetched five times daily from the Ashby API.</p>
+
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th>Last Fetch</th>
+                                    <th>Next Scheduled Fetch</th>
+                                    <th>Frequency</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="last-fetch-time">
+                                        <?php 
+                                        if ($last_fetch_info['last_fetch']) {
+                                            $date = new \DateTime($last_fetch_info['last_fetch'], $timezone);
+                                            echo $date->format('Y-m-d g:i A');
+                                        } else {
+                                            echo 'Never';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                        if (!empty($last_fetch_info['scheduled_times'])) {
+                                            foreach ($last_fetch_info['scheduled_times'] as $index => $time) {
+                                                $date = new \DateTime($time, $timezone);
+                                                echo $date->format('g:i A');
+                                                if ($index < count($last_fetch_info['scheduled_times']) - 1) {
+                                                    echo ', ';
+                                                }
+                                            }
+                                        } else {
+                                            echo 'Not scheduled';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        Five times daily<br>
+                                        <small>(Every 4.8 hours)</small>
+                                    </td>
+                                    <td>
+                                        <button type="button" id="refresh-jobs" class="button button-secondary">
+                                            Fetch Jobs Now
+                                        </button>
+                                        <span id="refresh-status"></span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="timezone-info">
+                            <p>
+                                <strong>Current Server Time Zone:</strong> <?php echo esc_html($timezone_string); ?><br>
+                                <strong>Current Server Time:</strong> <?php echo current_time('Y-m-d g:i A'); ?>
+                            </p>
+                        </div>
+
+                        <p class="submit">
+                            <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings">
+                        </p>
+                    </div>
+                    <div class="database-info-wrapper">
+    <h2>Database Information</h2>
+    <?php $this->render_database_info(); ?>
+</div>
+                </form>
             </div>
         </div>
-    </div>
-    <?php
-}
+        <?php
+    }
+
+    private function render_database_info() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'job_listings';
+        $job_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+        $last_updated = $wpdb->get_var("SELECT MAX(date_updated) FROM $table_name");
+        
+        ?>
+        <table class="widefat">
+            <thead>
+                <tr>
+                    <th>Total Jobs in Database</th>
+                    <th>Database Table Name</th>
+                    <th>Last Updated</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><?php echo intval($job_count); ?></td>
+                    <td><?php echo esc_html($table_name); ?></td>
+                    <td>
+                        <?php 
+                        if ($last_updated) {
+                            $date = new \DateTime($last_updated, wp_timezone());
+                            echo $date->format('Y-m-d g:i A');
+                        } else {
+                            echo 'Never';
+                        }
+                        ?>
+                    </td>
+                    <td>
+                        <?php 
+                        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name)) === $table_name) {
+                            echo '<span class="status-success">Active</span>';
+                        } else {
+                            echo '<span class="status-error">Table Missing</span>';
+                        }
+                        ?>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <?php
+    }
 
     public function enqueue_admin_scripts($hook) {
         // Only enqueue on our plugin page
-        if ($hook !== 'toplevel_page_job-listing-plugin') {
+        if ('settings_page_job-listing-settings' !== $hook) {
             return;
         }
 
+        wp_enqueue_style(
+            'job-listing-admin',
+            JLP_PLUGIN_URL . 'admin/css/admin.css',
+            [],
+            JLP_VERSION
+        );
+
         wp_enqueue_script(
             'job-listing-admin',
-            JLP_PLUGIN_URL . 'assets/js/admin.js',
+            JLP_PLUGIN_URL . 'admin/js/admin.js',
             [],
             JLP_VERSION,
             true
@@ -175,13 +219,6 @@ class Job_Listing_Admin {
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('job_listing_admin_nonce')
         ]);
-
-        wp_enqueue_style(
-            'job-listing-admin',
-            JLP_PLUGIN_URL . 'assets/css/admin.css',
-            [],
-            JLP_VERSION
-        );
     }
 
     public function save_setup_ajax() {

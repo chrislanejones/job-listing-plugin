@@ -283,3 +283,47 @@
   margin-top: 5px;
   font-weight: 500;
 }
+
+.timezone-info {
+  margin: 20px 0;
+  padding: 10px;
+  background: #f0f0f1;
+  border-left: 4px solid #646970;
+  border-radius: 4px;
+}
+
+.schedule-info-wrapper ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.schedule-info-wrapper ul li {
+  margin-bottom: 5px;
+}
+
+.database-info-wrapper {
+  margin: 30px 0;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+.database-info-wrapper h2 {
+  margin-top: 0;
+}
+
+.database-info-wrapper .status-success {
+  color: #00844a;
+  background: #ecf7ed;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.database-info-wrapper .status-error {
+  color: #b32d2e;
+  background: #fcf0f1;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
