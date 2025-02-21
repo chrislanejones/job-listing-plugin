@@ -55,28 +55,32 @@ class Job_Listing_Plugin {
     }
 
     public function enqueue_scripts() {
+        // Enqueue frontend CSS
         wp_enqueue_style(
             'job-listing-style',
-            JLP_PLUGIN_URL . 'assets/css/job-listing.css',
+            JLP_PLUGIN_URL . 'css/job-listing.css',
             [],
             JLP_VERSION
         );
-
+    
+        // Enqueue frontend JavaScript
         wp_enqueue_script(
             'job-listing-script',
-            JLP_PLUGIN_URL . 'assets/js/job-listing.js',
-            [], // No jQuery dependency
+            JLP_PLUGIN_URL . 'js/job-listing.js',
+            [], // No dependencies
             JLP_VERSION,
-            true
+            true // Load in footer
         );
-
+    
+        // Enqueue Font Awesome
         wp_enqueue_style(
             'font-awesome',
             'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
             [],
             '5.15.4'
         );
-
+    
+        // Localize script for AJAX
         wp_localize_script('job-listing-script', 'jobListingData', [
             'ajaxUrl' => rest_url('job-listing/v1/list'),
             'nonce' => wp_create_nonce('wp_rest')

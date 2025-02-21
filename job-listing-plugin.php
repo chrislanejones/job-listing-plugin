@@ -3,7 +3,7 @@
  * Plugin Name: Job Listing Plugin
  * Plugin URI: 
  * Description: A comprehensive job listing plugin with Elementor integration
- * Version: 1.5.0
+ * Version: 1.7.0
  * Author: Chris Lane Jones
  * Requires at least: 5.6
  * Requires PHP: 7.4
@@ -17,21 +17,39 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('JLP_VERSION', '1.5.0');
+define('JLP_VERSION', '1.7.0');
 define('JLP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JLP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JLP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('JLP_MINIMUM_PHP_VERSION', '7.4');
 
-// Include required files BEFORE using their classes
-require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-plugin.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-job-listing-admin.php';
+// Error handling function
+function jlp_handle_error($message) {
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log($message);
+    }
+    return false;
+}
+
+// Include required files with error handling
+$required_files = [
+    'includes/class-job-listing-plugin.php',
+    'includes/class-job-listing-admin.php'
+];
+
+foreach ($required_files as $file) {
+    if (!file_exists(JLP_PLUGIN_DIR . $file)) {
+        jlp_handle_error("Required file not found: $file");
+        return;
+    }
+    require_once JLP_PLUGIN_DIR . $file;
+}
 
 // Autoloader
 spl_autoload_register(function ($class) {
     // Only autoload classes in our namespace
     $prefix = 'JobListingPlugin\\';
-    $base_dir = plugin_dir_path(__FILE__) . 'includes/';
+    $base_dir = JLP_PLUGIN_DIR . 'includes/';
     
     // Check if the class uses our namespace
     $len = strlen($prefix);
@@ -52,6 +70,8 @@ spl_autoload_register(function ($class) {
 // Main plugin initialization class
 class Job_Listing_Plugin_Core {
     private static $instance = null;
+    private $plugin = null;
+    private $admin = null;
 
     public static function instance() {
         if (null === self::$instance) {
@@ -71,62 +91,92 @@ class Job_Listing_Plugin_Core {
     }
 
     public function load_plugin() {
-        // Initialize plugin
         try {
-            $plugin = Job_Listing_Plugin::get_instance();
-            $plugin->init();
+            // Initialize plugin
+            $this->plugin = Job_Listing_Plugin::get_instance();
+            $this->plugin->init();
 
             // Initialize admin if in admin area
             if (is_admin()) {
-                $admin = Job_Listing_Admin::get_instance();
-                $admin->init();
+                $this->admin = Job_Listing_Admin::get_instance();
+                $this->admin->init();
             }
         } catch (\Exception $e) {
-            error_log('Job Listing Plugin Initialization Error: ' . $e->getMessage());
+            jlp_handle_error('Job Listing Plugin Initialization Error: ' . $e->getMessage());
         }
     }
 
-    public function activate() {
-        // Check PHP version
-        if (version_compare(PHP_VERSION, JLP_MINIMUM_PHP_VERSION, '<')) {
-            deactivate_plugins(JLP_PLUGIN_BASENAME);
-            wp_die(
-                sprintf(
-                    __('Job Listing Plugin requires PHP version %s or higher.', 'job-listing-plugin'),
+    public function activate($network_wide = false) {
+        try {
+            // Check PHP version
+            if (version_compare(PHP_VERSION, JLP_MINIMUM_PHP_VERSION, '<')) {
+                throw new \Exception(sprintf(
+                    'Job Listing Plugin requires PHP version %s or higher.',
                     JLP_MINIMUM_PHP_VERSION
-                )
+                ));
+            }
+
+            // Initialize plugin instance if not already done
+            if (null === $this->plugin) {
+                $this->plugin = Job_Listing_Plugin::get_instance();
+            }
+
+            // Create database table
+            if (method_exists($this->plugin, 'create_db_table')) {
+                $this->plugin->create_db_table();
+            } else {
+                throw new \Exception('Required method create_db_table not found');
+            }
+
+            // Setup default settings
+            $settings = get_option('job_listing_settings', []);
+            $schedule_times = isset($settings['schedule_times']) 
+                ? $settings['schedule_times'] 
+                : ['08:00', '16:00'];
+
+            // Setup scheduler
+            if (method_exists($this->plugin, 'activate_scheduler')) {
+                $this->plugin->activate_scheduler($schedule_times);
+            } else {
+                throw new \Exception('Required method activate_scheduler not found');
+            }
+
+            // Initial data fetch
+            if (method_exists($this->plugin, 'fetch_and_store_jobs')) {
+                $this->plugin->fetch_and_store_jobs();
+            }
+
+            // Flush rewrite rules
+            flush_rewrite_rules();
+
+        } catch (\Exception $e) {
+            jlp_handle_error('Activation Error: ' . $e->getMessage());
+            wp_die(
+                esc_html($e->getMessage()),
+                'Plugin Activation Error',
+                ['back_link' => true]
             );
         }
-
-        // Get plugin instance
-        $plugin = Job_Listing_Plugin::get_instance();
-        
-        // Create database table
-        $plugin->create_db_table();
-
-        // Default schedule times if not set
-        $settings = get_option('job_listing_settings', []);
-        $schedule_times = isset($settings['schedule_times']) ? $settings['schedule_times'] : ['08:00', '16:00'];
-
-        // Activate scheduler
-        $plugin->activate_scheduler($schedule_times);
-
-        // Initial data fetch
-        $plugin->fetch_and_store_jobs();
-
-        // Flush rewrite rules
-        flush_rewrite_rules();
     }
 
-    public function deactivate() {
-        // Get plugin instance
-        $plugin = Job_Listing_Plugin::get_instance();
-        
-        // Deactivate scheduler
-        $plugin->deactivate_scheduler();
+    public function deactivate($network_wide = false) {
+        try {
+            // Initialize plugin instance if not already done
+            if (null === $this->plugin) {
+                $this->plugin = Job_Listing_Plugin::get_instance();
+            }
 
-        // Flush rewrite rules
-        flush_rewrite_rules();
+            // Deactivate scheduler
+            if (method_exists($this->plugin, 'deactivate_scheduler')) {
+                $this->plugin->deactivate_scheduler();
+            }
+
+            // Flush rewrite rules
+            flush_rewrite_rules();
+
+        } catch (\Exception $e) {
+            jlp_handle_error('Deactivation Error: ' . $e->getMessage());
+        }
     }
 }
 
@@ -136,4 +186,4 @@ function jlp_init() {
 }
 
 // Start the plugin
-jlp_init();
+add_action('plugins_loaded', 'JobListingPlugin\\jlp_init', 10);

@@ -202,14 +202,14 @@ class Job_Listing_Admin {
 
         wp_enqueue_style(
             'job-listing-admin',
-            JLP_PLUGIN_URL . 'admin/css/admin.css',
+            JLP_PLUGIN_URL . 'css/admin.css',
             [],
             JLP_VERSION
         );
 
         wp_enqueue_script(
             'job-listing-admin',
-            JLP_PLUGIN_URL . 'admin/js/admin.js',
+            JLP_PLUGIN_URL . 'js/admin.js',
             [],
             JLP_VERSION,
             true
